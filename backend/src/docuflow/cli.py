@@ -1,0 +1,115 @@
+"""Operator commands and long-running service loops."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+import time
+import uuid
+from datetime import UTC, datetime
+
+import structlog
+from sqlalchemy import select
+
+from docuflow.platform.bootstrap import Services, get_services
+from docuflow.platform.jobs import Dispatcher, Maintenance, enqueue
+from docuflow.platform.models import Tenant
+from docuflow.platform.observability import configure_logging
+
+log = structlog.get_logger("docuflow.cli")
+DISPATCH_POLL_SECONDS = 1.0
+SCHEDULER_POLL_SECONDS = 15.0
+
+
+def create_tenant(services: Services, name: str) -> None:
+    with services.db.platform_session() as session:
+        tenant = Tenant(name=name)
+        session.add(tenant)
+        session.flush()
+        services.audit.record(
+            session,
+            tenant.id,
+            "tenant.created",
+            object_type="tenant",
+            object_id=str(tenant.id),
+            details={"name": name},
+        )
+        print(tenant.id)
+
+
+def verify_audit(services: Services, tenant_id: uuid.UUID) -> int:
+    with services.db.tenant_session(tenant_id) as session:
+        chain = services.audit.verify(session, tenant_id)
+        anchors = services.audit.verify_checkpoints(session, tenant_id, services.store)
+    print(json.dumps({"chain": chain.__dict__, "checkpoints": anchors.__dict__}))
+    return 0 if chain.ok and anchors.ok else 1
+
+
+def run_dispatcher(services: Services) -> None:
+    from docuflow.worker import publish  # keeps Celery out of other commands
+
+    dispatcher = Dispatcher(services.db, publish)
+    log.info("dispatcher_started")
+    while True:
+        try:
+            if dispatcher.publish_batch() == 0:
+                time.sleep(DISPATCH_POLL_SECONDS)
+        except Exception:  # outages must not end the loop; the outbox retains work
+            log.exception("dispatch_failed")
+            time.sleep(5)
+
+
+def schedule_checkpoints(services: Services) -> None:
+    hour = datetime.now(UTC).strftime("%Y%m%d%H")
+    with services.db.platform_session() as session:
+        for tenant_id in session.scalars(select(Tenant.id).where(Tenant.status == "active")):
+            enqueue(session, tenant_id, "audit.checkpoint", f"audit.checkpoint:{hour}")
+
+
+def run_scheduler(services: Services) -> None:
+    maintenance = Maintenance(
+        services.db, services.audit, services.settings.job_heartbeat_timeout_seconds
+    )
+    log.info("scheduler_started")
+    while True:
+        try:
+            result = maintenance.tick()
+            schedule_checkpoints(services)
+            if any(result.values()):
+                log.info("maintenance_tick", **result)
+        except Exception:  # a later tick retries; timers stay in PostgreSQL
+            log.exception("maintenance_failed")
+        time.sleep(SCHEDULER_POLL_SECONDS)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="docuflow")
+    commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("ensure-bucket", help="Create the storage bucket if needed")
+    commands.add_parser("dispatcher", help="Publish committed outbox rows")
+    commands.add_parser("scheduler", help="Fire timers and recover stalled jobs")
+    tenant = commands.add_parser("create-tenant", help="Create an organization")
+    tenant.add_argument("name")
+    verify = commands.add_parser("verify-audit", help="Verify a tenant's audit chain")
+    verify.add_argument("tenant_id", type=uuid.UUID)
+    args = parser.parse_args(argv)
+
+    services = get_services()
+    configure_logging(services.settings.log_level)
+    match args.command:
+        case "ensure-bucket":
+            services.store.ensure_bucket()
+        case "dispatcher":
+            run_dispatcher(services)
+        case "scheduler":
+            run_scheduler(services)
+        case "create-tenant":
+            create_tenant(services, args.name)
+        case "verify-audit":
+            return verify_audit(services, args.tenant_id)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

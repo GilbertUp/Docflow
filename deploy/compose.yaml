@@ -1,0 +1,148 @@
+# Local stack. From the repository root:
+#   docker compose --env-file .env -f deploy/compose.yaml up --build
+# Memory limits fit a small laptop and are adjusted once real use has been measured.
+
+name: docuflow
+
+x-backend: &backend
+  build:
+    context: ..
+    dockerfile: deploy/docker/backend.Dockerfile
+  image: docuflow-backend:dev
+  environment: &backend-env
+    DOCUFLOW_ENVIRONMENT: ${DOCUFLOW_ENVIRONMENT:-development}
+    DOCUFLOW_DATABASE_URL: postgresql+psycopg://docuflow_app:${DOCUFLOW_APP_PASSWORD:?set in .env}@postgres:5432/docuflow
+    DOCUFLOW_PLATFORM_DATABASE_URL: postgresql+psycopg://docuflow_platform:${DOCUFLOW_PLATFORM_PASSWORD:?set in .env}@postgres:5432/docuflow
+    DOCUFLOW_REDIS_URL: redis://redis:6379/0
+    DOCUFLOW_S3_ENDPOINT: http://seaweedfs:8333
+    DOCUFLOW_S3_ACCESS_KEY: ${DOCUFLOW_S3_ACCESS_KEY:?set in .env}
+    DOCUFLOW_S3_SECRET_KEY: ${DOCUFLOW_S3_SECRET_KEY:?set in .env}
+    DOCUFLOW_MASTER_KEY: ${DOCUFLOW_MASTER_KEY:?set in .env}
+    DOCUFLOW_AUDIT_HMAC_KEY: ${DOCUFLOW_AUDIT_HMAC_KEY:?set in .env}
+  restart: unless-stopped
+  read_only: true
+  tmpfs:
+    - /tmp
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+      POSTGRES_DB: docuflow
+      DOCUFLOW_MIGRATOR_PASSWORD: ${DOCUFLOW_MIGRATOR_PASSWORD:?set in .env}
+      DOCUFLOW_APP_PASSWORD: ${DOCUFLOW_APP_PASSWORD:?set in .env}
+      DOCUFLOW_PLATFORM_PASSWORD: ${DOCUFLOW_PLATFORM_PASSWORD:?set in .env}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/bootstrap.sql:/docker-entrypoint-initdb.d/bootstrap.sql.inc:ro
+      - ./postgres/init-roles.sh:/docker-entrypoint-initdb.d/10-init-roles.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d docuflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    mem_limit: 512m
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "96mb", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    mem_limit: 128m
+    restart: unless-stopped
+
+  seaweedfs:
+    image: chrislusf/seaweedfs:${SEAWEEDFS_VERSION:-4.22}
+    command: ["server", "-dir=/data", "-s3", "-s3.port=8333", "-s3.config=/etc/seaweedfs/s3.json", "-volume.max=8", "-master.volumeSizeLimitMB=1024"]
+    environment:
+      DOCUFLOW_S3_ACCESS_KEY: ${DOCUFLOW_S3_ACCESS_KEY:?set in .env}
+      DOCUFLOW_S3_SECRET_KEY: ${DOCUFLOW_S3_SECRET_KEY:?set in .env}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        mkdir -p /etc/seaweedfs
+        cat > /etc/seaweedfs/s3.json <<EOF
+        {"identities":[{"name":"docuflow","credentials":[{"accessKey":"$$DOCUFLOW_S3_ACCESS_KEY","secretKey":"$$DOCUFLOW_S3_SECRET_KEY"}],"actions":["Admin","Read","Write","List","Tagging"]}]}
+        EOF
+        exec weed "$$@"
+      - --
+    volumes:
+      - seaweedfs-data:/data
+    mem_limit: 768m
+    restart: unless-stopped
+
+  migrate:
+    <<: *backend
+    command: ["sh", "-c", "alembic upgrade head && docuflow ensure-bucket"]
+    environment:
+      <<: *backend-env
+      DOCUFLOW_MIGRATION_DATABASE_URL: postgresql+psycopg://docuflow_migrator:${DOCUFLOW_MIGRATOR_PASSWORD:?set in .env}@postgres:5432/docuflow
+    depends_on:
+      postgres:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_started
+    restart: "no"
+    mem_limit: 256m
+
+  api:
+    <<: *backend
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/health/live')"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    mem_limit: 384m
+
+  worker:
+    <<: *backend
+    command: ["celery", "-A", "docuflow.worker:celery_app", "worker", "-Q", "system,ingest,ocr,index,embed,compress,notify,integrations", "--concurrency=2", "--loglevel=INFO"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    mem_limit: 768m
+
+  dispatcher:
+    <<: *backend
+    command: ["docuflow", "dispatcher"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    mem_limit: 192m
+
+  scheduler:
+    <<: *backend
+    command: ["docuflow", "scheduler"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    mem_limit: 192m
+
+volumes:
+  postgres-data:
+  redis-data:
+  seaweedfs-data:
