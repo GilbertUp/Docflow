@@ -20,6 +20,7 @@ from docuflow.platform.observability import configure_logging
 log = structlog.get_logger("docuflow.cli")
 DISPATCH_POLL_SECONDS = 1.0
 SCHEDULER_POLL_SECONDS = 15.0
+STORAGE_WAIT_ATTEMPTS = 30
 
 
 def create_tenant(services: Services, name: str) -> None:
@@ -36,6 +37,19 @@ def create_tenant(services: Services, name: str) -> None:
             details={"name": name},
         )
         print(tenant.id)
+
+
+def ensure_bucket(services: Services) -> None:
+    """Storage may start after migrations, so wait for it rather than failing the deploy."""
+    for attempt in range(STORAGE_WAIT_ATTEMPTS):
+        try:
+            services.store.ensure_bucket()
+        except Exception:
+            log.warning("storage_not_ready", attempt=attempt + 1)
+            time.sleep(2)
+        else:
+            return
+    services.store.ensure_bucket()
 
 
 def verify_audit(services: Services, tenant_id: uuid.UUID) -> int:
@@ -99,7 +113,7 @@ def main(argv: list[str] | None = None) -> int:
     configure_logging(services.settings.log_level)
     match args.command:
         case "ensure-bucket":
-            services.store.ensure_bucket()
+            ensure_bucket(services)
         case "dispatcher":
             run_dispatcher(services)
         case "scheduler":

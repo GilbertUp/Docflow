@@ -1,0 +1,5 @@
+# CI only: exposes storage to the conformance tests on the runner.
+services:
+  seaweedfs:
+    ports:
+      - "127.0.0.1:8333:8333"
