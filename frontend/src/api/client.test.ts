@@ -51,6 +51,22 @@ describe("request", () => {
     expect(writeInit?.body).toBe(JSON.stringify({ name: "Finance" }));
   });
 
+  it("uploads a file as the raw body with its name in the query", async () => {
+    const fetchMock = vi.fn(async () => reply(201, { duplicate: false }));
+    vi.stubGlobal("fetch", fetchMock);
+    setCsrfToken("token-2");
+    const file = new File(["%PDF-1.7"], "ABC invoice.pdf", { type: "application/pdf" });
+
+    await api.upload("/folders/f1/documents", file);
+
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("/api/v1/folders/f1/documents?filename=ABC+invoice.pdf");
+    expect(init.body).toBe(file);
+    const headers = new Headers(init.headers);
+    expect(headers.get("Content-Type")).toBe("application/octet-stream");
+    expect(headers.get("X-CSRF-Token")).toBe("token-2");
+  });
+
   it("returns nothing for 204 answers", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => reply(204)));
     await expect(api.delete("/folders/1")).resolves.toBeUndefined();

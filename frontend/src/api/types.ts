@@ -22,6 +22,7 @@ export type CabinetDetail = S["CabinetDetail"];
 export type Folder = S["FolderOut"];
 export type FolderDetail = S["FolderDetail"];
 export type DocumentRow = S["DocumentOut"];
+export type UploadResult = S["UploadResult"];
 export type Children = S["ChildrenOut"];
 export type Stats = S["StatsOut"];
 export type Crumb = S["CrumbOut"];
