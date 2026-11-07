@@ -11,7 +11,7 @@ A feature is **Done** only when all ten criteria from the guide pass: model, mig
 | M0 | Foundation (not a spec feature) | M0 | Done | | [Gate report](reports/m0-gate.md), CI run #6 |
 | F01 | Identity, organizations and permissions | M1 | In progress | OIDC single sign-on adapter | Service, API and web screens (sign-in, MFA, users, groups, roles, API keys, permissions, inspector); 94 identity tests and 33 web tests pass locally; CI run #13 (commit b50a697) green; 27 browser journeys pass locally in Edge (isolation, immediate permission change, onboarding, security, accessibility), CI run #17 (commit a51cb30) green |
 | F02 | Cabinets and folders | M1 | In progress | Upload for the acceptance demo (F03); retention (F15); auto-routing (F07, F11); document copy (F03) | Service, API and web browser (tree, breadcrumbs, create, rename, move, copy, archive, delete, permissions); 52 repository tests pass locally; CI run #13 (commit b50a697) green, including the web container and proxy checks; Finance and HR isolation journeys pass locally in a real browser, CI run #17 (commit a51cb30) green |
-| F03 | Document ingestion | M2 | Not started | Email ingestion (F20) | |
+| F03 | Document ingestion | M2 | In progress | Malware scanning; new versions; batch and folder import; email ingestion (F20); document copy | Upload and audited download over HTTP and in the web client ([ADR 0017](adr/0017-upload-pipeline.md)); backend, unit and browser tests pass locally, CI pending |
 | F04 | OCR and text extraction | M2 | Not started | | |
 | F05 | Automatic preview | M2 | Not started | Audit timeline (F16) | |
 | F06 | Document types and index fields | M2 | Not started | | |
