@@ -11,6 +11,7 @@ permissions:
 jobs:
   backend:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     services:
       postgres:
         image: pgvector/pgvector:pg17
@@ -43,7 +44,7 @@ jobs:
       - name: Module boundaries
         run: lint-imports
       - name: Tests
-        run: pytest --cov=docuflow --cov-report=term-missing
+        run: pytest --timeout=120 --cov=docuflow --cov-report=term-missing
       - name: Dependency vulnerabilities
         run: pip-audit --skip-editable
       - name: Licence policy
@@ -51,6 +52,7 @@ jobs:
 
   compose:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     env:
       COMPOSE: docker compose --env-file .env -f deploy/compose.yaml -f deploy/compose.ci.yaml
     steps:
@@ -70,8 +72,10 @@ jobs:
           done
           exit 1
       - name: Live job through Redis and Celery
+        timeout-minutes: 4
         run: sh scripts/ci-live-job.sh
       - name: S3 conformance on the real backend
+        timeout-minutes: 6
         working-directory: backend
         run: |
           pip install -e ".[dev]"
@@ -79,7 +83,7 @@ jobs:
           export DOCUFLOW_TEST_S3_ENDPOINT=http://127.0.0.1:8333
           export DOCUFLOW_TEST_S3_ACCESS_KEY=$DOCUFLOW_S3_ACCESS_KEY
           export DOCUFLOW_TEST_S3_SECRET_KEY=$DOCUFLOW_S3_SECRET_KEY
-          pytest tests/test_storage.py tests/test_s3_conformance.py -v
+          pytest tests/test_storage.py tests/test_s3_conformance.py -v --timeout=90
       - name: Measured memory use
         if: always()
         run: docker stats --no-stream --format "table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}"
