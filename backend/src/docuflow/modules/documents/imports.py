@@ -19,7 +19,7 @@ import uuid
 import zipfile
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from typing import BinaryIO
+from typing import BinaryIO, cast
 
 import structlog
 from sqlalchemy import func, select, update
@@ -440,7 +440,7 @@ class ImportService:
             spool.close()
             raise
         spool.seek(0)
-        return spool  # type: ignore[return-value]
+        return cast("BinaryIO", spool)
 
     def _destination(
         self,
