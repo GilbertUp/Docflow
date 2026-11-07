@@ -9,6 +9,7 @@ import type {
   Crumb,
   FolderDetail,
   Stats,
+  ImportResult,
   UploadResult,
 } from "../../api/types";
 import {
@@ -21,6 +22,7 @@ import {
   formatDate,
 } from "../../components/ui";
 import { AclDialog } from "./AclDialog";
+import { ImportPanel } from "./ImportPanel";
 import { VersionsDialog } from "./VersionsDialog";
 import {
   DeleteDialog,
@@ -111,6 +113,13 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
     where: string;
     items: { tone: "success" | "error"; text: string }[];
   } | null>(null);
+
+  const importInput = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState<{ where: string; id: string } | null>(null);
+  const startImport = useMutation({
+    mutationFn: (file: File) => api.upload<ImportResult>(`/${kind}s/${id}/imports`, file),
+    onSuccess: (result) => setImporting({ where: `${kind}:${id}`, id: result.id }),
+  });
 
   const upload = useMutation({
     mutationFn: async (files: File[]) => {
@@ -273,6 +282,27 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
         >
           {upload.isPending ? "Uploading…" : "Upload files"}
         </button>
+        <input
+          ref={importInput}
+          type="file"
+          accept=".zip,application/zip"
+          hidden
+          aria-label="Choose a ZIP archive to import"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (file) startImport.mutate(file);
+          }}
+        />
+        <button
+          type="button"
+          className="btn"
+          disabled={!can("create") || archived || startImport.isPending}
+          title="Add a ZIP archive: its folders and files are filed here"
+          onClick={() => importInput.current?.click()}
+        >
+          {startImport.isPending ? "Sending…" : "Import ZIP"}
+        </button>
         <button
           type="button"
           className="btn"
@@ -337,6 +367,10 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
 
       {message ? <Notice tone="success">{message}</Notice> : null}
       <ErrorNotice error={archive.error} />
+      <ErrorNotice error={startImport.error} />
+      {importing?.where === `${kind}:${id}` ? (
+        <ImportPanel id={importing.id} onDismiss={() => setImporting(null)} />
+      ) : null}
       {uploadNotes?.where === `${kind}:${id}`
         ? uploadNotes.items.map((note) => (
             <Notice key={note.text} tone={note.tone}>

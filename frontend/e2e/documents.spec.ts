@@ -1,6 +1,6 @@
 import { type Page, expect, test } from "@playwright/test";
 
-import { newSession, signInAndWait, uniqueName } from "./helpers";
+import { newSession, signInAndWait, uniqueName, zipOf } from "./helpers";
 
 const PDF = (text: string) =>
   Buffer.from(`%PDF-1.7\n1 0 obj<<>>endobj\n${text}\n%%EOF`, "utf8");
@@ -143,5 +143,39 @@ test.describe("Document versions", () => {
     const now: Buffer[] = [];
     for await (const chunk of await current.createReadStream()) now.push(chunk as Buffer);
     expect(Buffer.concat(now).equals(second)).toBe(true);
+  });
+});
+
+test.describe("Importing an archive", () => {
+  test("a ZIP becomes folders and documents, and the files it could not file are listed", async ({
+    page,
+  }) => {
+    const folder = uniqueName("Inbox");
+    await signInAndWait(page, "admin@example.com");
+    await openNewFolder(page, folder);
+
+    await page.getByLabel("Choose a ZIP archive to import").setInputFiles({
+      name: "bundle.zip",
+      mimeType: "application/zip",
+      buffer: zipOf({
+        "Reports/2026/q1.pdf": PDF(`q1 ${folder}`),
+        "Reports/summary.txt": Buffer.from(`summary ${folder}`),
+        "notes.txt": Buffer.from(`notes ${folder}`),
+        "program.pdf": Buffer.from("MZ not a pdf"),
+        "../escape.pdf": PDF(`escape ${folder}`),
+      }),
+    });
+
+    const panel = page.getByRole("region", { name: /Importing bundle\.zip/ });
+    await expect(panel.getByText(/3 of 5 files were filed/)).toBeVisible();
+    await expect(panel.getByRole("row", { name: /program\.pdf/ })).toContainText("not accepted");
+    await expect(panel.getByRole("row", { name: /escape\.pdf/ })).toContainText("not safe");
+
+    await expect(page.getByRole("link", { name: "Reports" })).toBeVisible();
+    await expect(page.getByRole("row", { name: /notes\.txt/ })).toBeVisible();
+    await page.getByRole("link", { name: "Reports" }).click();
+    await expect(page.getByRole("row", { name: /summary\.txt/ })).toBeVisible();
+    await page.getByRole("link", { name: "2026" }).click();
+    await expect(page.getByRole("row", { name: /q1\.pdf/ })).toBeVisible();
   });
 });

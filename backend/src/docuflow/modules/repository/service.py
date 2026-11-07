@@ -392,6 +392,28 @@ class RepositoryService:
         )
         return folder
 
+    def get_or_create_folder(
+        self, session: Session, principal: Principal, destination: Destination, name: str
+    ) -> Folder:
+        """The folder of that name directly under the destination, made if it is not there."""
+        name = clean_name(name)
+        tree = self._tree(session, principal)
+        target = self._target(session, tree, destination)
+        existing = session.scalar(
+            select(Folder).where(
+                Folder.cabinet_id == target.cabinet.id,
+                Folder.parent_id.is_(None)
+                if target.folder is None
+                else Folder.parent_id == target.folder.id,
+                func.lower(Folder.name) == name.lower(),
+            )
+        )
+        if existing is None:
+            return self.create_folder(session, principal, destination, name)
+        if not tree.decide(existing.acl_anchor_id, "read").allowed:
+            raise Conflict("A folder with that name already exists here.")
+        return existing
+
     def get_folder(
         self, session: Session, principal: Principal, folder_id: uuid.UUID
     ) -> tuple[Folder, list[Crumb]]:

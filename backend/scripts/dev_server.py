@@ -18,7 +18,9 @@ import secrets
 import shutil
 import subprocess
 import sys
+import threading
 import time
+import uuid
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -31,6 +33,8 @@ from moto.server import ThreadedMotoServer
 from sqlalchemy import make_url, select
 
 from docuflow.main import create_app
+from docuflow.modules.documents.imports import JOB_TYPE
+from docuflow.modules.documents.wiring import build_documents
 from docuflow.modules.identity import security
 from docuflow.modules.identity.auth import Principal
 from docuflow.modules.identity.catalogue import SYSTEM_PERMISSIONS
@@ -49,6 +53,7 @@ from docuflow.modules.repository.service import Destination, RepositoryService
 from docuflow.platform.audit import AuditLog
 from docuflow.platform.crypto import LocalKeyProvider
 from docuflow.platform.db import Database, make_engine
+from docuflow.platform.jobs import Dispatcher, HandlerRegistry, JobRunner
 from docuflow.platform.models import Tenant
 from docuflow.platform.storage import EncryptedObjects, S3ObjectStore
 
@@ -290,6 +295,30 @@ def seed(services: SimpleNamespace, fixed_password: str | None = None) -> None:
     print("Seeded the demo organization. Sign-in details:\n  " + "\n  ".join(lines))
 
 
+def run_jobs_inline(services: SimpleNamespace, stop: threading.Event) -> None:
+    """Stands in for the dispatcher and the worker, which the demo does not start.
+
+    It uses the real outbox, dispatcher and job runner, so imports behave as in production,
+    one job at a time.
+    """
+    registry = HandlerRegistry()
+    policy = PolicyService()
+    repo = RepositoryService(services.audit, policy)
+    _, imports = build_documents(services, repo, policy)
+    registry.register(JOB_TYPE)(lambda job: imports.run(services.db, job))
+    runner = JobRunner(services.db, registry, services.audit, 1)
+    pending: list[dict[str, Any]] = []
+    dispatcher = Dispatcher(services.db, lambda _topic, payload: pending.append(payload))
+    while not stop.wait(0.5):
+        try:
+            dispatcher.publish_batch()
+            while pending:
+                payload = pending.pop(0)
+                runner.run(uuid.UUID(payload["tenant_id"]), uuid.UUID(payload["job_id"]))
+        except Exception as exc:  # the demo keeps serving whatever happens to a job
+            print(f"background job failed: {exc}", file=sys.stderr)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawTextHelpFormatter
@@ -321,6 +350,9 @@ def main() -> int:
     if args.seed:
         seed(services, args.password)
     app = create_app(services)  # type: ignore[arg-type]
+    threading.Thread(
+        target=run_jobs_inline, args=(services, threading.Event()), daemon=True
+    ).start()
     print(f"API on http://127.0.0.1:{args.port}  (docs at /api/v1/docs)")
     uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="warning")
     return 0

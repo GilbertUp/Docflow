@@ -12,7 +12,14 @@ from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import StreamingResponse
 from starlette.concurrency import run_in_threadpool
 
-from docuflow.modules.documents.schemas import UploadResult, VersionOut, VersionResult
+from docuflow.modules.documents.imports import ImportService, ImportView
+from docuflow.modules.documents.schemas import (
+    ImportItemOut,
+    ImportOut,
+    UploadResult,
+    VersionOut,
+    VersionResult,
+)
 from docuflow.modules.documents.service import (
     DocumentService,
     Download,
@@ -34,29 +41,36 @@ def get_documents(request: Request) -> DocumentService:
     return service
 
 
+def get_imports(request: Request) -> ImportService:
+    service: ImportService = request.app.state.imports
+    return service
+
+
 Docs = Annotated[DocumentService, Depends(get_documents)]
+Imports = Annotated[ImportService, Depends(get_imports)]
 Filename = Annotated[str, Query(min_length=1, max_length=300)]
 Reason = Annotated[str, Query(max_length=500)]
 
 
 async def _with_body[T](
     request: Request,
-    docs: DocumentService,
+    limit: int,
+    noun: str,
     check: Callable[[], None],
     work: Callable[[BinaryIO], T],
 ) -> T:
     """Receives the body into a private temporary file, then hands it to the work."""
     # Refuse before receiving a large body the caller may not send.
     await run_in_threadpool(check)
-    too_large = FileTooLarge(f"Files can be at most {docs.max_upload_bytes // (1024 * 1024)} MB.")
+    too_large = FileTooLarge(f"{noun} can be at most {limit // (1024 * 1024)} MB.")
     declared = request.headers.get("content-length")
-    if declared and declared.isdigit() and int(declared) > docs.max_upload_bytes:
+    if declared and declared.isdigit() and int(declared) > limit:
         raise too_large
     with tempfile.TemporaryFile() as spool:
         received = 0
         async for part in request.stream():
             received += len(part)
-            if received > docs.max_upload_bytes:
+            if received > limit:
                 raise too_large
             spool.write(part)
         if received == 0:
@@ -85,7 +99,8 @@ async def _upload(
     db = ctx.services.db
     result = await _with_body(
         request,
-        docs,
+        docs.max_upload_bytes,
+        "Files",
         lambda: docs.check_can_upload(db, who, where),
         lambda body: docs.upload(db, who, where, filename, body),
     )
@@ -147,7 +162,8 @@ async def add_version(
     db = ctx.services.db
     added: VersionAdded = await _with_body(
         request,
-        docs,
+        docs.max_upload_bytes,
+        "Files",
         lambda: docs.check_can_add_version(db, who, document_id),
         lambda body: docs.add_version(db, who, document_id, filename, body, reason),
     )
@@ -196,3 +212,76 @@ def download_version(
     with ctx.services.db.tenant_session(who.tenant_id) as session:
         info = docs.prepare_download(session, who, document_id, number)
     return _attachment(docs, info)
+
+
+def _import_out(view: ImportView) -> ImportOut:
+    job = view.job
+    return ImportOut(
+        id=job.id,
+        status=job.status,
+        archive_name=job.archive_name,
+        file_count=job.file_count,
+        filed=view.filed,
+        duplicates=view.duplicates,
+        failed=view.failed,
+        error=job.error,
+        created_at=job.created_at,
+        finished_at=job.finished_at,
+        items=[ImportItemOut(**vars(item)) for item in view.items],
+    )
+
+
+async def _submit_import(
+    request: Request,
+    ctx: Ctx,
+    imports: ImportService,
+    who: User_,
+    where: Destination,
+    filename: str,
+) -> ImportOut:
+    db = ctx.services.db
+    job_id = await _with_body(
+        request,
+        imports.limits.max_archive_bytes,
+        "Archives",
+        lambda: imports.check_can_submit(db, who, where),
+        lambda body: imports.submit(db, who, where, filename, body),
+    )
+    with db.tenant_session(who.tenant_id) as session:
+        return _import_out(imports.get(session, who, job_id, items=0))
+
+
+@router.post("/cabinets/{cabinet_id}/imports", status_code=202)
+async def import_into_cabinet(
+    cabinet_id: uuid.UUID,
+    filename: Filename,
+    request: Request,
+    ctx: Ctx,
+    imports: Imports,
+    who: User_,
+) -> ImportOut:
+    """Queues a ZIP archive for import. The body is the archive; poll GET /imports/{id}."""
+    return await _submit_import(
+        request, ctx, imports, who, Destination(cabinet_id=cabinet_id), filename
+    )
+
+
+@router.post("/folders/{folder_id}/imports", status_code=202)
+async def import_into_folder(
+    folder_id: uuid.UUID,
+    filename: Filename,
+    request: Request,
+    ctx: Ctx,
+    imports: Imports,
+    who: User_,
+) -> ImportOut:
+    return await _submit_import(
+        request, ctx, imports, who, Destination(folder_id=folder_id), filename
+    )
+
+
+@router.get("/imports/{import_id}")
+def get_import(import_id: uuid.UUID, ctx: Ctx, imports: Imports, who: User_) -> ImportOut:
+    """Progress and results of an import. Only the person who started it can read it."""
+    with ctx.services.db.tenant_session(who.tenant_id) as session:
+        return _import_out(imports.get(session, who, import_id))
