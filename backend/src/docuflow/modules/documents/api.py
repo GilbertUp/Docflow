@@ -12,10 +12,15 @@ from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import StreamingResponse
 from starlette.concurrency import run_in_threadpool
 
+from docuflow.modules.documents.extraction import ExtractionService
 from docuflow.modules.documents.imports import ImportService, ImportView
 from docuflow.modules.documents.schemas import (
     ImportItemOut,
     ImportOut,
+    LanguagesOut,
+    PageTextOut,
+    TextOut,
+    TextRequestOut,
     UploadResult,
     VersionOut,
     VersionResult,
@@ -41,6 +46,11 @@ def get_documents(request: Request) -> DocumentService:
     return service
 
 
+def get_text(request: Request) -> ExtractionService:
+    service: ExtractionService = request.app.state.text
+    return service
+
+
 def get_imports(request: Request) -> ImportService:
     service: ImportService = request.app.state.imports
     return service
@@ -48,6 +58,7 @@ def get_imports(request: Request) -> ImportService:
 
 Docs = Annotated[DocumentService, Depends(get_documents)]
 Imports = Annotated[ImportService, Depends(get_imports)]
+Text = Annotated[ExtractionService, Depends(get_text)]
 Filename = Annotated[str, Query(min_length=1, max_length=300)]
 Reason = Annotated[str, Query(max_length=500)]
 
@@ -87,6 +98,7 @@ def _version_out(info: VersionInfo) -> VersionOut:
         state=info.version.state,
         reason=info.version.reason,
         scan_engine=info.version.scan_engine,
+        text_state=info.version.text_state,
         size_bytes=info.size_bytes,
         mime=info.mime,
         created_at=info.version.created_at,
@@ -285,3 +297,46 @@ def get_import(import_id: uuid.UUID, ctx: Ctx, imports: Imports, who: User_) -> 
     """Progress and results of an import. Only the person who started it can read it."""
     with ctx.services.db.tenant_session(who.tenant_id) as session:
         return _import_out(imports.get(session, who, import_id))
+
+
+@router.get("/ocr/languages")
+def ocr_languages(text: Text, who: User_) -> LanguagesOut:
+    """The languages this server can read, and the defaults used when none is chosen."""
+    info = text.language_info()
+    return LanguagesOut(**vars(info))
+
+
+@router.get("/documents/{document_id}/text")
+def document_text(
+    document_id: uuid.UUID,
+    ctx: Ctx,
+    text: Text,
+    who: User_,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> TextOut:
+    """The text of the current version, page by page. Needs the preview right and is audited."""
+    with ctx.services.db.tenant_session(who.tenant_id) as session:
+        view = text.read(session, who, document_id, limit, offset)
+    return TextOut(
+        version=view.version_number,
+        state=view.state,
+        error=view.error,
+        total_pages=view.total_pages,
+        pages=[PageTextOut(**vars(page)) for page in view.pages],
+    )
+
+
+@router.post("/documents/{document_id}/text/reprocess", status_code=202)
+async def reprocess_text(
+    document_id: uuid.UUID,
+    ctx: Ctx,
+    text: Text,
+    who: User_,
+    languages: Annotated[str, Query(max_length=200)] = "",
+) -> TextRequestOut:
+    """Reads the current version again, in the languages given (for example eng,deu)."""
+    version, state, chosen = await run_in_threadpool(
+        text.reprocess, ctx.services.db, who, document_id, languages or None
+    )
+    return TextRequestOut(version=version, state=state, languages=chosen)

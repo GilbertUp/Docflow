@@ -11,6 +11,7 @@ from celery import Celery
 from celery.signals import worker_ready
 from redis.exceptions import RedisError
 
+from docuflow.modules.documents.extraction import JOB_TYPE as EXTRACT_JOB
 from docuflow.modules.documents.wiring import build_documents
 from docuflow.modules.identity.policy import PolicyService
 from docuflow.modules.repository.service import RepositoryService
@@ -41,8 +42,15 @@ def documents_import(job: JobContext) -> None:
     services = get_services()
     policy = PolicyService()
     repo = RepositoryService(services.audit, policy)
-    _, imports = build_documents(services, repo, policy)
-    imports.run(services.db, job)
+    build_documents(services, repo, policy).imports.run(services.db, job)
+
+
+@registry.register(EXTRACT_JOB)
+def documents_extract_text(job: JobContext) -> None:
+    services = get_services()
+    policy = PolicyService()
+    repo = RepositoryService(services.audit, policy)
+    build_documents(services, repo, policy).text.run(services.db, job)
 
 
 def make_celery(broker_url: str) -> Celery:

@@ -24,6 +24,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from docuflow.modules.documents.extraction import request_extraction
 from docuflow.modules.documents.models import BinaryObject, DocumentVersion
 from docuflow.modules.documents.scanner import Scanner
 from docuflow.modules.identity.auth import Principal
@@ -360,6 +361,7 @@ class DocumentService:
             session.add(version)
             session.flush()
             document.current_version_id = version.id
+            request_extraction(session, principal.tenant_id, version, binary.mime)
             self._record(
                 session,
                 principal,
@@ -420,6 +422,7 @@ class DocumentService:
             session.add(version)
             session.flush()
             document.current_version_id = version.id
+            request_extraction(session, principal.tenant_id, version, binary.mime)
             document.size_bytes = binary.size_bytes
             document.row_version += 1
             self._record(

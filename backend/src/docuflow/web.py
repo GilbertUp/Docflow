@@ -67,7 +67,8 @@ def install(app: FastAPI, services: Services) -> ApiContext:
     ctx = build_context(services, RedisRateLimiter(services.redis))
     app.state.api = ctx
     app.state.repo = RepositoryService(services.audit, ctx.policy)
-    app.state.documents, app.state.imports = build_documents(services, app.state.repo, ctx.policy)
+    built = build_documents(services, app.state.repo, ctx.policy)
+    app.state.documents, app.state.imports, app.state.text = built.docs, built.imports, built.text
     app.include_router(router)
     app.include_router(repository_router)
     app.include_router(documents_router)

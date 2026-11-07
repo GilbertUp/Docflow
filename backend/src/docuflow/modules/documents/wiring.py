@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
+from docuflow.modules.documents.extraction import ExtractionService, extraction_settings
 from docuflow.modules.documents.imports import MIB, ImportLimits, ImportService
+from docuflow.modules.documents.ocr import build_ocr_engine
 from docuflow.modules.documents.scanner import build_scanner
 from docuflow.modules.documents.service import DocumentService
 from docuflow.modules.identity.policy import PolicyService
@@ -25,9 +28,14 @@ def import_limits(settings: Any) -> ImportLimits:
     )
 
 
-def build_documents(
-    services: Any, repo: RepositoryService, policy: PolicyService
-) -> tuple[DocumentService, ImportService]:
+@dataclass(frozen=True)
+class Documents:
+    docs: DocumentService
+    imports: ImportService
+    text: ExtractionService
+
+
+def build_documents(services: Any, repo: RepositoryService, policy: PolicyService) -> Documents:
     docs = DocumentService(
         services.audit,
         policy,
@@ -39,4 +47,12 @@ def build_documents(
     imports = ImportService(
         services.audit, repo, docs, services.objects, import_limits(services.settings)
     )
-    return docs, imports
+    text = ExtractionService(
+        services.audit,
+        policy,
+        repo,
+        services.objects,
+        build_ocr_engine(services.settings),
+        extraction_settings(services.settings),
+    )
+    return Documents(docs, imports, text)

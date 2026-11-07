@@ -33,6 +33,7 @@ from moto.server import ThreadedMotoServer
 from sqlalchemy import make_url, select
 
 from docuflow.main import create_app
+from docuflow.modules.documents.extraction import JOB_TYPE as EXTRACT_JOB
 from docuflow.modules.documents.imports import JOB_TYPE
 from docuflow.modules.documents.wiring import build_documents
 from docuflow.modules.identity import security
@@ -304,8 +305,9 @@ def run_jobs_inline(services: SimpleNamespace, stop: threading.Event) -> None:
     registry = HandlerRegistry()
     policy = PolicyService()
     repo = RepositoryService(services.audit, policy)
-    _, imports = build_documents(services, repo, policy)
-    registry.register(JOB_TYPE)(lambda job: imports.run(services.db, job))
+    built = build_documents(services, repo, policy)
+    registry.register(JOB_TYPE)(lambda job: built.imports.run(services.db, job))
+    registry.register(EXTRACT_JOB)(lambda job: built.text.run(services.db, job))
     runner = JobRunner(services.db, registry, services.audit, 1)
     pending: list[dict[str, Any]] = []
     dispatcher = Dispatcher(services.db, lambda _topic, payload: pending.append(payload))
