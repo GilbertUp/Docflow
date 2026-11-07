@@ -23,6 +23,7 @@ from docuflow.modules.documents.ocr import (
 from docuflow.platform.errors import DomainError
 from tests.documents.files import (
     FakeEngine,
+    accented_font,
     drawn_page,
     mark_page,
     pdf_of_images,
@@ -239,7 +240,10 @@ def test_tesseract_reads_other_languages_when_their_packs_are_installed(
 ) -> None:
     if language not in tesseract.languages():
         pytest.skip(f"the {language} language pack is not installed here")
-    page = tesseract.recognise(drawn_page(text, (1100, 400)), [language])
+    font = accented_font()
+    if font is None:
+        pytest.skip("no font with accented letters is available here")
+    page = tesseract.recognise(drawn_page(text, (1100, 400), font), [language])
     assert expected.lower() in page.text.lower()
 
 
@@ -248,7 +252,12 @@ def test_tesseract_reads_with_several_languages_at_once() -> None:
     wanted = {"eng", "fra"}
     if not wanted <= set(tesseract.languages()):
         pytest.skip("English and French packs are not both installed here")
-    page = tesseract.recognise(drawn_page("Invoice 1042\nfacture société"), ["eng", "fra"])
+    font = accented_font()
+    if font is None:
+        pytest.skip("no font with accented letters is available here")
+    page = tesseract.recognise(
+        drawn_page("Invoice 1042\nfacture société", font=font), ["eng", "fra"]
+    )
     assert "Invoice" in page.text
     assert "facture" in page.text.lower()
 

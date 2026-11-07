@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 from collections.abc import Sequence
+from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -51,12 +52,34 @@ def text_pdf(pages: Sequence[str]) -> bytes:
     return bytes(output)
 
 
-def drawn_page(text: str = "", size: tuple[int, int] = (900, 400)) -> Image.Image:
-    """A white page with black text in the default font, large enough for OCR to read."""
+ACCENT_FONTS = (
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+    "/usr/share/fonts/TTF/DejaVuSans.ttf",
+    "/Library/Fonts/Arial.ttf",
+    "C:/Windows/Fonts/arial.ttf",
+)
+
+
+def accented_font(size: int = 44) -> ImageFont.FreeTypeFont | None:
+    """A font that really has letters such as é, ü and ñ. Pillow's built-in one draws other
+    shapes for them, so a test that needs accents must not use it."""
+    for path in ACCENT_FONTS:
+        if Path(path).exists():
+            return ImageFont.truetype(path, size)
+    return None
+
+
+def drawn_page(
+    text: str = "",
+    size: tuple[int, int] = (900, 400),
+    font: ImageFont.FreeTypeFont | None = None,
+) -> Image.Image:
+    """A white page with black text, large enough for OCR to read."""
     image = Image.new("RGB", size, "white")
     if text:
         draw = ImageDraw.Draw(image)
-        font = ImageFont.load_default(size=44)
+        font = font or ImageFont.load_default(size=44)
         draw.multiline_text((40, 40), text, fill="black", font=font, spacing=24)
     return image
 
