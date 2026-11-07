@@ -1435,6 +1435,8 @@ export interface components {
             original_filename: string;
             /** Reason */
             reason: string;
+            /** Scan Engine */
+            scan_engine: string;
             /** State */
             state: string;
         };

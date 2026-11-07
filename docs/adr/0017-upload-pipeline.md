@@ -14,12 +14,19 @@ F03 turns the filing structure into a place that holds files. Uploads are the la
 - **Deduplication.** A duplicate upload creates a new document that shares the stored object, with a reference count. The response says `duplicate: true`, but names the earlier document only if the caller may read it, so the flag cannot be used to probe other departments' files.
 - **Download.** `GET /documents/{id}/download` needs `download`, answers 404 for a document the caller cannot read, is audited, and streams the decrypted original as an attachment.
 
+## Malware scanning
+- **Scan before storing.** The scanner sees the plaintext, so it runs before encryption, on the spooled file. An infected file is never stored: the upload answers 422 `malware_detected`, nothing is filed, and an audit event `document.upload_blocked` records the file name, content hash, signature and scanner.
+- **Fail closed.** If the scanner cannot answer (unreachable, timeout, or an error reply such as clamd's stream limit), the upload answers 503 `scanner_unavailable`. A file is never released unscanned because the scanner was down.
+- **ClamAV by the clamd protocol.** `ClamdScanner` speaks INSTREAM over TCP and needs no client library. clamd's `StreamMaxLength` must be at least the upload limit; the compose service sets it to 100M.
+- **Production must scan.** `DOCUFLOW_SCANNER` defaults to `none` for development and tests, and settings refuse `production` with `none`. Each version records `scan_engine`, so files that were never scanned stay identifiable. Versions filed before this change show `none`.
+- **No quarantine queue.** Because infected files are refused rather than held, the `quarantined` state and a review queue are unused. They can return if the owner wants infected files kept for analysis, which would need a separate, locked-down store.
+- **Rescans.** Signatures change, so already stored files may later match. A periodic rescan job belongs with the job framework and is not built.
+
 ## Not in this slice
-- **Malware scanning.** A version has a `quarantined` state and a `rejected` state, but no scanner exists yet, so every accepted upload is released at once. A scanner adapter (for example ClamAV) is the next step, and uploads must not be treated as scanned until it exists.
 - **Zip-bomb and archive limits** for Office files, and sandboxed conversion (ADR 0008), arrive with F04 and F05.
 - **New versions, batch and folder import, email ingestion, document copy and the duplicate-link table.** `ingestion_job` is also unused until imports exist.
 
 ## Consequences
 - No new runtime dependency.
-- A scanner can slot in between storing and releasing without changing the API.
+- Scanning adds the time of one pass over the file to every upload.
 - Deduplicated objects are deleted only when no version refers to them. Deleting documents is not built yet, so nothing decrements the count.

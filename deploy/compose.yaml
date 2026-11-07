@@ -19,6 +19,9 @@ x-backend: &backend
     DOCUFLOW_S3_SECRET_KEY: ${DOCUFLOW_S3_SECRET_KEY:?set in .env}
     DOCUFLOW_MASTER_KEY: ${DOCUFLOW_MASTER_KEY:?set in .env}
     DOCUFLOW_AUDIT_HMAC_KEY: ${DOCUFLOW_AUDIT_HMAC_KEY:?set in .env}
+    # "none" skips malware scanning and is refused in production. Use "clamav" with the scan profile.
+    DOCUFLOW_SCANNER: ${DOCUFLOW_SCANNER:-none}
+    DOCUFLOW_CLAMAV_HOST: clamav
   restart: unless-stopped
   read_only: true
   tmpfs:
@@ -61,6 +64,26 @@ services:
       timeout: 3s
       retries: 20
     mem_limit: 128m
+    restart: unless-stopped
+
+  # Malware scanner. Off unless started with --profile scan and DOCUFLOW_SCANNER=clamav in .env.
+  # It downloads virus signatures on first start and needs about 2 GB of memory.
+  clamav:
+    profiles: ["scan"]
+    image: clamav/clamav:${CLAMAV_VERSION:-1.4}
+    environment:
+      # Must be at least DOCUFLOW_MAX_UPLOAD_BYTES (100 MiB by default), or clamd refuses the file.
+      CLAMD_CONF_StreamMaxLength: 100M
+      CLAMD_CONF_MaxFileSize: 100M
+    volumes:
+      - clamav-data:/var/lib/clamav
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 180s
+    mem_limit: 2g
     restart: unless-stopped
 
   seaweedfs:
@@ -167,3 +190,4 @@ volumes:
   postgres-data:
   redis-data:
   seaweedfs-data:
+  clamav-data:
