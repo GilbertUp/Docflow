@@ -93,3 +93,58 @@ test.describe("Filing documents", () => {
     await hana.context.close();
   });
 });
+
+test.describe("Document versions", () => {
+  test("add a version, see the history, and fetch the first file again", async ({ page }) => {
+    const folder = uniqueName("Contracts");
+    const first = PDF(`terms net 30 ${folder}`);
+    const second = PDF(`terms net 45 ${folder}`);
+    await signInAndWait(page, "admin@example.com");
+    await page.getByRole("link", { name: "Finance", exact: true }).first().click();
+    await page.getByRole("button", { name: "New folder" }).click();
+    await page.getByLabel("Folder name").fill(folder);
+    await page.getByRole("button", { name: "Create folder" }).click();
+    await page.getByRole("link", { name: folder }).first().click();
+    await page.getByLabel("Choose files to upload").setInputFiles({
+      name: "contract.pdf",
+      mimeType: "application/pdf",
+      buffer: first,
+    });
+    await expect(page.getByRole("row", { name: /contract\.pdf/ })).toBeVisible();
+
+    await page.getByRole("button", { name: /Versions of contract\.pdf/ }).click();
+    const dialog = page.getByRole("dialog", { name: /Versions of contract\.pdf/ });
+    await expect(dialog.getByRole("row", { name: /contract\.pdf/ })).toHaveCount(1);
+
+    await dialog.getByLabel("New version file").setInputFiles({
+      name: "contract signed.pdf",
+      mimeType: "application/pdf",
+      buffer: second,
+    });
+    await dialog.getByLabel("What changed (optional)").fill("Payment terms extended");
+    await dialog.getByRole("button", { name: "Add version" }).click();
+    await expect(dialog.getByText("Version 2 was added.")).toBeVisible();
+
+    const newest = dialog.getByRole("row", { name: /contract signed\.pdf/ });
+    await expect(newest).toContainText("Current");
+    await expect(newest).toContainText("Payment terms extended");
+
+    const [oldFile] = await Promise.all([
+      page.waitForEvent("download"),
+      dialog.getByRole("link", { name: "Download version 1" }).click(),
+    ]);
+    expect(oldFile.suggestedFilename()).toBe("contract.pdf");
+    const chunks: Buffer[] = [];
+    for await (const chunk of await oldFile.createReadStream()) chunks.push(chunk as Buffer);
+    expect(Buffer.concat(chunks).equals(first)).toBe(true);
+
+    await dialog.getByRole("button", { name: "Done" }).click();
+    const [current] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("row", { name: /contract\.pdf/ }).getByRole("link", { name: /Download/ }).click(),
+    ]);
+    const now: Buffer[] = [];
+    for await (const chunk of await current.createReadStream()) now.push(chunk as Buffer);
+    expect(Buffer.concat(now).equals(second)).toBe(true);
+  });
+});
