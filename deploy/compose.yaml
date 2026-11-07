@@ -8,6 +8,9 @@ x-backend: &backend
   build:
     context: ..
     dockerfile: deploy/docker/backend.Dockerfile
+    args:
+      # Empty means the Dockerfile's long default list. Set it to keep the image small.
+      OCR_LANGUAGES: ${OCR_LANGUAGES:-}
   image: docuflow-backend:dev
   environment: &backend-env
     DOCUFLOW_ENVIRONMENT: ${DOCUFLOW_ENVIRONMENT:-development}
@@ -21,6 +24,8 @@ x-backend: &backend
     DOCUFLOW_AUDIT_HMAC_KEY: ${DOCUFLOW_AUDIT_HMAC_KEY:?set in .env}
     # "none" skips malware scanning and is refused in production. Use "clamav" with the scan profile.
     DOCUFLOW_SCANNER: ${DOCUFLOW_SCANNER:-none}
+    # Languages read when none is chosen. Codes are Tesseract's, and their packs must be installed.
+    DOCUFLOW_OCR_DEFAULT_LANGUAGES: ${DOCUFLOW_OCR_DEFAULT_LANGUAGES:-eng,fra}
     DOCUFLOW_CLAMAV_HOST: clamav
   restart: unless-stopped
   read_only: true
