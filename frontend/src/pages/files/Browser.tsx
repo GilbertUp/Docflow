@@ -9,6 +9,7 @@ import type {
   Crumb,
   FolderDetail,
   Stats,
+  DocumentTypeRow,
   ImportResult,
   UploadResult,
 } from "../../api/types";
@@ -23,6 +24,7 @@ import {
 } from "../../components/ui";
 import { AclDialog } from "./AclDialog";
 import { ImportPanel } from "./ImportPanel";
+import { DetailsDialog } from "./DetailsDialog";
 import { TextDialog } from "./TextDialog";
 import { VersionsDialog } from "./VersionsDialog";
 import {
@@ -46,6 +48,7 @@ type DialogState =
   | { kind: "acl" }
   | { kind: "versions"; id: string; title: string }
   | { kind: "text"; id: string; title: string }
+  | { kind: "details"; id: string; title: string }
   | null;
 
 interface Container {
@@ -122,6 +125,13 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
     mutationFn: (file: File) => api.upload<ImportResult>(`/${kind}s/${id}/imports`, file),
     onSuccess: (result) => setImporting({ where: `${kind}:${id}`, id: result.id }),
   });
+
+  const types = useQuery({
+    queryKey: ["document-types"],
+    queryFn: () => api.get<DocumentTypeRow[]>("/document-types", { query: { include_archived: true } }),
+  });
+  const typeName = (id: string | null | undefined) =>
+    id ? (types.data?.find((item) => item.id === id)?.name ?? "—") : "—";
 
   const upload = useMutation({
     mutationFn: async (files: File[]) => {
@@ -463,6 +473,9 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
                 <thead>
                   <tr>
                     <th scope="col">Title</th>
+                    <th scope="col" className="hide-narrow">
+                      Type
+                    </th>
                     <th scope="col">Size</th>
                     <th scope="col">Filed</th>
                     <th scope="col">
@@ -479,6 +492,7 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
                           <span className="badge badge-warn">Archived</span>
                         ) : null}
                       </td>
+                      <td className="hide-narrow">{typeName(document.document_type_id)}</td>
                       <td>{formatBytes(document.size_bytes)}</td>
                       <td>{formatDate(document.created_at)}</td>
                       <td className="actions">
@@ -491,6 +505,15 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
                             Download<span className="sr-only"> {document.title}</span>
                           </a>
                         ) : null}
+                        <button
+                          type="button"
+                          className="btn btn-quiet"
+                          onClick={() =>
+                            setDialog({ kind: "details", id: document.id, title: document.title })
+                          }
+                        >
+                          Details<span className="sr-only"> of {document.title}</span>
+                        </button>
                         {can("preview") ? (
                           <button
                             type="button"
@@ -588,6 +611,14 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
       ) : null}
       {dialog?.kind === "acl" ? (
         <AclDialog anchorId={container.anchorId} title={container.name} onClose={() => setDialog(null)} />
+      ) : null}
+      {dialog?.kind === "details" ? (
+        <DetailsDialog
+          documentId={dialog.id}
+          title={dialog.title}
+          canEdit={can("edit_metadata") && !archived}
+          onClose={() => setDialog(null)}
+        />
       ) : null}
       {dialog?.kind === "text" ? (
         <TextDialog

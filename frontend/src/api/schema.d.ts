@@ -339,6 +339,62 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/document-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Types */
+        get: operations["list_types_api_v1_document_types_get"];
+        put?: never;
+        /** Create Type */
+        post: operations["create_type_api_v1_document_types_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/document-types/{type_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Type */
+        get: operations["get_type_api_v1_document_types__type_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Type */
+        patch: operations["update_type_api_v1_document_types__type_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/document-types/{type_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Publish Version
+         * @description Publishes a new set of fields. Documents already typed keep the version they have.
+         */
+        post: operations["publish_version_api_v1_document_types__type_id__versions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/documents/{document_id}": {
         parameters: {
             query?: never;
@@ -389,6 +445,30 @@ export interface paths {
          */
         get: operations["download_api_v1_documents__document_id__download_get"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{document_id}/index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Index
+         * @description The document's type and field values, laid out on the type's current fields.
+         */
+        get: operations["get_index_api_v1_documents__document_id__index_get"];
+        /**
+         * Set Index
+         * @description Sets the type and replaces the editable values. Every problem comes back at once.
+         */
+        put: operations["set_index_api_v1_documents__document_id__index_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1044,6 +1124,13 @@ export interface components {
             /** Folders */
             folders: components["schemas"]["FolderOut"][];
         };
+        /** ChoiceModel */
+        ChoiceModel: {
+            /** Label */
+            label: string;
+            /** Value */
+            value: string;
+        };
         /** CopyRequest */
         CopyRequest: {
             destination: components["schemas"]["DestinationModel"];
@@ -1107,6 +1194,18 @@ export interface components {
             /** Permissions */
             permissions?: string[];
         };
+        /** CreateTypeRequest */
+        CreateTypeRequest: {
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Fields */
+            fields: components["schemas"]["FieldModel"][];
+            /** Name */
+            name: string;
+        };
         /** CreateUserRequest */
         CreateUserRequest: {
             /** Department Id */
@@ -1169,6 +1268,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Document Type Id */
+            document_type_id?: string | null;
             /** Folder Id */
             folder_id: string | null;
             /**
@@ -1184,6 +1285,36 @@ export interface components {
             status: string;
             /** Title */
             title: string;
+        };
+        /** FieldModel */
+        FieldModel: {
+            /** Choices */
+            choices?: components["schemas"]["ChoiceModel"][];
+            /**
+             * Data Type
+             * @enum {string}
+             */
+            data_type: "text" | "number" | "date" | "boolean" | "choice";
+            /** Default Value */
+            default_value?: string | null;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /**
+             * Read Only
+             * @default false
+             */
+            read_only: boolean;
+            /**
+             * Required
+             * @default false
+             */
+            required: boolean;
+            /** Validation */
+            validation?: {
+                [key: string]: unknown;
+            };
         };
         /** FolderDetail */
         FolderDetail: {
@@ -1288,6 +1419,64 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** IndexFieldOut */
+        IndexFieldOut: {
+            /** Choices */
+            choices?: components["schemas"]["ChoiceModel"][];
+            /**
+             * Data Type
+             * @enum {string}
+             */
+            data_type: "text" | "number" | "date" | "boolean" | "choice";
+            /** Default Value */
+            default_value?: string | null;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /**
+             * Read Only
+             * @default false
+             */
+            read_only: boolean;
+            /**
+             * Required
+             * @default false
+             */
+            required: boolean;
+            /** Validation */
+            validation?: {
+                [key: string]: unknown;
+            };
+            /** Value */
+            value?: unknown;
+        };
+        /** IndexOut */
+        IndexOut: {
+            /** Complete */
+            complete: boolean;
+            /** Current Version */
+            current_version: number | null;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** Document Type Id */
+            document_type_id: string | null;
+            /** Fields */
+            fields: components["schemas"]["IndexFieldOut"][];
+            /** Missing Required */
+            missing_required: string[];
+            /** Outdated */
+            outdated: boolean;
+            /** Row Version */
+            row_version: number;
+            /** Schema Version */
+            schema_version: number | null;
+            /** Type Name */
+            type_name: string | null;
+        };
         /** LanguagesOut */
         LanguagesOut: {
             /** Available */
@@ -1352,6 +1541,13 @@ export interface components {
         /** MoveRequest */
         MoveRequest: {
             destination: components["schemas"]["DestinationModel"];
+            /** Row Version */
+            row_version: number;
+        };
+        /** NewVersionRequest */
+        NewVersionRequest: {
+            /** Fields */
+            fields: components["schemas"]["FieldModel"][];
             /** Row Version */
             row_version: number;
         };
@@ -1525,6 +1721,17 @@ export interface components {
             /** Last Seen At */
             last_seen_at: string | null;
         };
+        /** SetIndexRequest */
+        SetIndexRequest: {
+            /** Document Type Id */
+            document_type_id: string | null;
+            /** Row Version */
+            row_version?: number | null;
+            /** Values */
+            values?: {
+                [key: string]: unknown;
+            };
+        };
         /** SetPermissionsRequest */
         SetPermissionsRequest: {
             /** Permissions */
@@ -1565,6 +1772,26 @@ export interface components {
             /** Version */
             version: number;
         };
+        /** TypeOut */
+        TypeOut: {
+            /** Description */
+            description: string;
+            /** Fields */
+            fields: components["schemas"]["FieldModel"][];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Row Version */
+            row_version: number;
+            /** Status */
+            status: string;
+            /** Version */
+            version: number | null;
+        };
         /** UpdateCabinetRequest */
         UpdateCabinetRequest: {
             /** Description */
@@ -1578,6 +1805,17 @@ export interface components {
         };
         /** UpdateFolderRequest */
         UpdateFolderRequest: {
+            /** Name */
+            name?: string | null;
+            /** Row Version */
+            row_version: number;
+            /** Status */
+            status?: ("active" | "archived") | null;
+        };
+        /** UpdateTypeRequest */
+        UpdateTypeRequest: {
+            /** Description */
+            description?: string | null;
             /** Name */
             name?: string | null;
             /** Row Version */
@@ -2456,6 +2694,171 @@ export interface operations {
             };
         };
     };
+    list_types_api_v1_document_types_get: {
+        parameters: {
+            query?: {
+                include_archived?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TypeOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_type_api_v1_document_types_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTypeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TypeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_type_api_v1_document_types__type_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                type_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TypeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_type_api_v1_document_types__type_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                type_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTypeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TypeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    publish_version_api_v1_document_types__type_id__versions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                type_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TypeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_document_api_v1_documents__document_id__get: {
         parameters: {
             query?: never;
@@ -2536,6 +2939,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_index_api_v1_documents__document_id__index_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IndexOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_index_api_v1_documents__document_id__index_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetIndexRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IndexOut"];
                 };
             };
             /** @description Validation Error */

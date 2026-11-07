@@ -104,13 +104,14 @@ interface FieldProps {
   label: string;
   value: string;
   onChange: (value: string) => void;
-  type?: "text" | "password" | "email" | "number";
+  type?: "text" | "password" | "email" | "number" | "date";
   error?: string | undefined;
   hint?: string;
   required?: boolean;
   autoComplete?: string;
   autoFocus?: boolean;
-  inputMode?: "numeric" | "text";
+  inputMode?: "numeric" | "decimal" | "text";
+  disabled?: boolean;
   maxLength?: number;
 }
 
@@ -126,6 +127,7 @@ export function TextField({
   autoFocus,
   inputMode,
   maxLength,
+  disabled,
 }: FieldProps) {
   const id = useId();
   const describedBy = [error ? `${id}-error` : null, hint ? `${id}-hint` : null]
@@ -146,6 +148,7 @@ export function TextField({
         autoFocus={autoFocus}
         inputMode={inputMode}
         maxLength={maxLength}
+        disabled={disabled}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy || undefined}
         onChange={(event) => onChange(event.target.value)}

@@ -20,6 +20,9 @@ export function Layout() {
           {canSeePeople ? <NavLink to="/admin/users">Users</NavLink> : null}
           {canSeePeople ? <NavLink to="/admin/groups">Groups</NavLink> : null}
           {canSeePeople || can("security.admin") ? <NavLink to="/admin/roles">Roles</NavLink> : null}
+          {can("document_types.manage") ? (
+            <NavLink to="/admin/document-types">Document types</NavLink>
+          ) : null}
           {can("integrations.manage") ? <NavLink to="/admin/api-keys">API keys</NavLink> : null}
         </nav>
         <div className="userbox">
