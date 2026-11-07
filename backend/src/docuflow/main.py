@@ -14,6 +14,7 @@ from docuflow import __version__
 from docuflow.platform.bootstrap import Services, get_services
 from docuflow.platform.jobs import WORKER_HEARTBEAT_KEY
 from docuflow.platform.observability import RequestContextMiddleware, configure_logging
+from docuflow.web import install
 
 log = structlog.get_logger("docuflow.api")
 
@@ -57,6 +58,7 @@ def create_app(services: Services | None = None) -> FastAPI:
         redoc_url=None,
     )
     app.add_middleware(RequestContextMiddleware)
+    install(app, active)
 
     health = APIRouter(tags=["health"])
 

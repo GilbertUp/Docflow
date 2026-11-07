@@ -22,7 +22,12 @@ def fake_services(db: Any, redis_ok: bool = True, store_ok: bool = True) -> Any:
     if not store_ok:
         store.check.side_effect = ConnectionError("down")
     return SimpleNamespace(
-        settings=SimpleNamespace(log_level="WARNING"), db=db, redis=redis, store=store
+        settings=SimpleNamespace(log_level="WARNING", environment="test"),
+        db=db,
+        audit=MagicMock(),
+        keys=MagicMock(),
+        redis=redis,
+        store=store,
     )
 
 

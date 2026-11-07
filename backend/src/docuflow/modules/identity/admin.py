@@ -87,6 +87,15 @@ class IdentityAdmin:
                 details={"required": permission},
             )
 
+    def require_any_system(
+        self, session: Session, principal: Principal, permissions: list[str]
+    ) -> None:
+        held = self._policy.system_permissions(session, principal.tenant_id, principal.user_id)
+        if not held.intersection(permissions):
+            raise Forbidden(
+                "You do not have permission to do that.", details={"required_any": permissions}
+            )
+
     def _get[T](self, session: Session, model: type[T], item_id: uuid.UUID, label: str) -> T:
         # The tenant session means another tenant's id simply is not found.
         item = session.get(model, item_id)

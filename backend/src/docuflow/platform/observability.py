@@ -87,6 +87,8 @@ class RequestContextMiddleware:
                 headers["X-Correlation-ID"] = correlation
                 for name, value in SECURITY_HEADERS.items():
                     headers.setdefault(name, value)
+                if scope["path"].startswith("/api/"):
+                    headers.setdefault("Cache-Control", "no-store")
             await send(message)
 
         try:
