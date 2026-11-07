@@ -53,5 +53,7 @@ class DocumentVersion(IdMixin, TimestampMixin, Base):
     # The name the person uploaded. Metadata only: it never reaches a storage key.
     original_filename: Mapped[str] = mapped_column(String(300))
     reason: Mapped[str] = mapped_column(Text, default="")
+    # Which scanner cleared the file. "none" means it was not scanned.
+    scan_engine: Mapped[str] = mapped_column(String(20), default="none")
     state: Mapped[str] = mapped_column(String(20), default="released")
     created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))

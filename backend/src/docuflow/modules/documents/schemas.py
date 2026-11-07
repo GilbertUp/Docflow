@@ -18,6 +18,7 @@ class VersionOut(BaseModel):
     original_filename: str
     state: str
     reason: str
+    scan_engine: str
     created_at: datetime
 
 

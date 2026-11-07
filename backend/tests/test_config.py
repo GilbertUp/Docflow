@@ -60,3 +60,10 @@ def test_audit_key_must_differ_from_master_key() -> None:
 def test_secrets_do_not_appear_in_repr() -> None:
     settings = Settings(**base_values())
     assert settings.master_key.get_secret_value() not in repr(settings)
+
+
+def test_production_refuses_to_run_without_a_malware_scanner() -> None:
+    with pytest.raises(ValidationError, match="malware scanner"):
+        Settings(**base_values(environment="production"))
+    ok = Settings(**base_values(environment="production", scanner="clamav"))
+    assert ok.scanner == "clamav"

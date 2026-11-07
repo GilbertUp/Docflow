@@ -5,22 +5,27 @@ Rules that hold throughout:
 - Bytes are stored, hashed and encrypted outside any database transaction, so a slow upload never
   holds a lock. If filing then fails, the stored object is removed again.
 - The file type comes from the bytes. The extension only separates formats that share a signature.
+- A file is scanned for malware before it is stored. An infected file is never stored, and a
+  scanner that cannot answer refuses the upload instead of releasing the file unscanned.
 - A duplicate upload creates a new document that shares the stored object. Whether the matching
   document is revealed depends on whether the caller may read it.
 """
 
 from __future__ import annotations
 
+import hashlib
 import re
 import uuid
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterator
 from dataclasses import dataclass
+from typing import BinaryIO
 
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from docuflow.modules.documents.models import BinaryObject, DocumentVersion
+from docuflow.modules.documents.scanner import Scanner
 from docuflow.modules.identity.auth import Principal
 from docuflow.modules.identity.policy import PolicyService
 from docuflow.modules.repository.models import Document
@@ -31,6 +36,7 @@ from docuflow.platform.errors import Conflict, DomainError, Forbidden, NotFound
 from docuflow.platform.storage import EncryptedObjects, StoredObject
 
 SNIFF_BYTES = 8192
+READ = 1024 * 1024
 MAX_TITLE = 300
 OFFICE_TYPES = {
     "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -49,6 +55,11 @@ class UnsupportedFileType(DomainError):
 class FileTooLarge(DomainError):
     status = 413
     code = "too_large"
+
+
+class MalwareDetected(DomainError):
+    status = 422
+    code = "malware_detected"
 
 
 def clean_filename(raw: str) -> str:
@@ -112,12 +123,14 @@ class DocumentService:
         policy: PolicyService,
         repo: RepositoryService,
         objects: EncryptedObjects,
+        scanner: Scanner,
         max_upload_bytes: int,
     ) -> None:
         self._audit = audit
         self._policy = policy
         self._repo = repo
         self._objects = objects
+        self._scanner = scanner
         self.max_upload_bytes = max_upload_bytes
 
     def _record(
@@ -153,34 +166,31 @@ class DocumentService:
         principal: Principal,
         destination: Destination,
         filename: str,
-        content: Iterable[bytes],
+        content: BinaryIO,
     ) -> Uploaded:
+        """Files the bytes of a seekable stream, read from its start."""
         name = clean_filename(filename)
         self.check_can_upload(db, principal, destination)
-        stream = iter(content)
-        head = b""
-        while len(head) < SNIFF_BYTES:
-            chunk = next(stream, None)
-            if chunk is None:
-                break
-            head += chunk
-        if not head:
+        content.seek(0, 2)
+        size = content.tell()
+        content.seek(0)
+        if size == 0:
             raise DomainError("The file is empty.")
-        mime = sniff(head[:SNIFF_BYTES], name)
+        if size > self.max_upload_bytes:
+            raise FileTooLarge(f"Files can be at most {self.max_upload_bytes // (1024 * 1024)} MB.")
+        head = content.read(SNIFF_BYTES)
+        mime = sniff(head, name)
         if mime is None:
             raise UnsupportedFileType(
                 "That kind of file is not accepted. Use PDF, an image, Word, Excel, "
                 "PowerPoint, text or CSV."
             )
 
-        def limited() -> Iterator[bytes]:
-            total = 0
-            for part in (head, *stream):
-                total += len(part)
-                if total > self.max_upload_bytes:
-                    raise FileTooLarge(
-                        f"Files can be at most {self.max_upload_bytes // (1024 * 1024)} MB."
-                    )
+        self._screen(db, principal, name, content)
+        content.seek(0)
+
+        def chunks() -> Iterator[bytes]:
+            while part := content.read(READ):
                 yield part
 
         tenant_id = principal.tenant_id
@@ -190,7 +200,7 @@ class DocumentService:
                 found = session.scalar(select(BinaryObject.id).where(BinaryObject.sha256 == sha256))
                 return found is not None
 
-        stored = self._objects.put(tenant_id, limited(), already_stored)
+        stored = self._objects.put(tenant_id, chunks(), already_stored)
         try:
             try:
                 return self._file(db, principal, destination, name, mime, stored)
@@ -202,6 +212,36 @@ class DocumentService:
         except BaseException:
             self._discard(stored)
             raise
+
+    def _screen(self, db: Database, principal: Principal, name: str, content: BinaryIO) -> None:
+        """Refuses an infected file, and records the attempt. Nothing is stored."""
+        content.seek(0)
+        verdict = self._scanner.scan(content)
+        if verdict.clean:
+            return
+        content.seek(0)
+        digest = hashlib.sha256()
+        while part := content.read(READ):
+            digest.update(part)
+        with db.tenant_session(principal.tenant_id) as session:
+            self._audit.record(
+                session,
+                principal.tenant_id,
+                "document.upload_blocked",
+                actor=AuditActor(
+                    principal.user_id, "user" if principal.kind == "session" else "api_key"
+                ),
+                object_type="upload",
+                object_id=digest.hexdigest(),
+                details={
+                    "filename": name,
+                    "signature": verdict.signature,
+                    "scanner": self._scanner.name,
+                },
+            )
+        raise MalwareDetected(
+            f"That file contains a virus ({verdict.signature}), so it was not stored."
+        )
 
     def _discard(self, stored: StoredObject) -> None:
         if stored.key is not None:
@@ -251,6 +291,7 @@ class DocumentService:
                 number=1,
                 binary_object_id=binary.id,
                 original_filename=name,
+                scan_engine=self._scanner.name,
                 state="released",
                 created_by=principal.user_id,
             )

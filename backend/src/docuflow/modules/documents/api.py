@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import tempfile
 import uuid
-from collections.abc import Iterator
 from typing import Annotated, BinaryIO, cast
 from urllib.parse import quote
 
@@ -20,7 +19,6 @@ from docuflow.modules.repository.service import Destination
 from docuflow.platform.errors import DomainError
 
 router = APIRouter(prefix="/api/v1", tags=["documents"])
-CHUNK = 1024 * 1024
 UNSAFE_IN_HEADER = {chr(34), chr(92), ";"}
 
 
@@ -31,11 +29,6 @@ def get_documents(request: Request) -> DocumentService:
 
 Docs = Annotated[DocumentService, Depends(get_documents)]
 Filename = Annotated[str, Query(min_length=1, max_length=300)]
-
-
-def _chunks(spool: BinaryIO) -> Iterator[bytes]:
-    while chunk := spool.read(CHUNK):
-        yield chunk
 
 
 async def _upload(
@@ -59,7 +52,7 @@ async def _upload(
             raise DomainError("The file is empty.")
         spool.seek(0)
         result = await run_in_threadpool(
-            docs.upload, ctx.services.db, who, where, filename, _chunks(cast("BinaryIO", spool))
+            docs.upload, ctx.services.db, who, where, filename, cast("BinaryIO", spool)
         )
     return UploadResult(
         document=DocumentOut.model_validate(result.document),
