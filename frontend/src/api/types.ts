@@ -24,6 +24,7 @@ export type FolderDetail = S["FolderDetail"];
 export type DocumentRow = S["DocumentOut"];
 export type UploadResult = S["UploadResult"];
 export type VersionRow = S["VersionOut"];
+export type ImportResult = S["ImportOut"];
 export type VersionResult = S["VersionResult"];
 export type Children = S["ChildrenOut"];
 export type Stats = S["StatsOut"];
