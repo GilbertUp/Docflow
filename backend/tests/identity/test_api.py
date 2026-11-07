@@ -460,3 +460,17 @@ def test_permission_catalogue_and_roles_list(app: FastAPI, db: Database, tenant:
     roles = client.get(f"{API}/roles").json()["items"]
     assert roles[0]["name"] == "Security admin"
     assert "security.admin" in roles[0]["permissions"]
+
+
+def test_a_role_lists_who_holds_it(app: FastAPI, db: Database, tenant: uuid.UUID) -> None:
+    new_admin(db, tenant)
+    felix = new_user(db, tenant, "felix")
+    team = new_group(db, tenant, "Finance")
+    role = new_role(db, tenant, "Directory reader", ("users.manage",))
+    assign_role(db, tenant, role, user_id=felix)
+    assign_role(db, tenant, role, group_id=team)
+    client, _ = sign_in(app, db, tenant, "admin")
+    holders = client.get(f"{API}/roles/{role}/assignments").json()
+    assert [u["email"] for u in holders["users"]] == [email("felix")]
+    assert [g["name"] for g in holders["groups"]] == ["Finance"]
+    assert client.get(f"{API}/roles/{uuid.uuid4()}/assignments").status_code == 404

@@ -1,0 +1,70 @@
+// Friendly names for the generated API types. Run `npm run gen:api` after backend changes.
+import type { components } from "./schema";
+
+type S = components["schemas"];
+
+export type User = S["UserOut"];
+export type Me = S["MeResponse"];
+export type LoginResult = S["LoginResponse"];
+export type Session = S["SessionOut"];
+export type Group = S["GroupOut"];
+export type Role = S["RoleOut"];
+export type RoleHolders = S["RoleHoldersOut"];
+export type Department = S["DepartmentOut"];
+export type ApiKey = S["ApiKeyOut"];
+export type ApiKeyCreated = S["ApiKeyCreated"];
+export type PermissionInfo = S["PermissionOut"];
+export type AclEntry = S["AclEntryModel"];
+export type AclResponse = S["AclResponse"];
+export type MfaSetup = S["MfaSetupResponse"];
+export type Cabinet = S["CabinetOut"];
+export type CabinetDetail = S["CabinetDetail"];
+export type Folder = S["FolderOut"];
+export type FolderDetail = S["FolderDetail"];
+export type DocumentRow = S["DocumentOut"];
+export type Children = S["ChildrenOut"];
+export type Stats = S["StatsOut"];
+export type Crumb = S["CrumbOut"];
+export type CopyResult = S["CopyResult"];
+
+export interface Page<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+// The inspector's response is free-form on the server, so it is described here.
+export interface EffectivePermission {
+  allowed: boolean;
+  reason: string;
+  source_anchor_id: string | null;
+}
+
+export type Destination = { cabinet_id: string } | { folder_id: string };
+
+// Mirrors the server's fixed vocabulary of resource permissions.
+export const RESOURCE_PERMISSIONS = [
+  ["read", "See that it exists, and its details"],
+  ["preview", "View content in the browser"],
+  ["download", "Download the original file"],
+  ["create", "Add folders and documents"],
+  ["edit_metadata", "Rename and edit details"],
+  ["version", "Add new versions"],
+  ["move", "Move or copy"],
+  ["annotate", "Comment and annotate"],
+  ["share", "Share with others"],
+  ["delete", "Archive or delete"],
+  ["manage_acl", "Change who has access"],
+  ["dispose", "Approve disposal"],
+] as const;
+
+export const SYSTEM_PERMISSIONS = [
+  ["security.admin", "Change roles and security settings"],
+  ["users.manage", "Create and change users"],
+  ["groups.manage", "Create groups and change membership"],
+  ["departments.manage", "Create and change departments"],
+  ["cabinets.manage", "Create and change cabinets"],
+  ["audit.read", "Read and export the audit trail"],
+  ["integrations.manage", "Manage API keys and identity providers"],
+] as const;

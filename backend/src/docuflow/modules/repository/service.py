@@ -628,6 +628,13 @@ class RepositoryService:
         bump_permission_epoch(session, principal.tenant_id)
         self._record(session, principal, "folder.deleted", "folder", folder_id, details)
 
+    def permissions_on(
+        self, session: Session, principal: Principal, anchor_id: uuid.UUID
+    ) -> list[str]:
+        """What the caller may do here, so a client can show only the actions that will work."""
+        tree = self._tree(session, principal)
+        return [code for code in RESOURCE_PERMISSIONS if tree.decide(anchor_id, code).allowed]
+
     # Browsing
 
     def children(

@@ -139,6 +139,11 @@ class RoleOut(BaseModel):
     permissions: list[str]
 
 
+class RoleHoldersOut(BaseModel):
+    users: list[UserOut]
+    groups: list[GroupOut]
+
+
 class RoleHolderRequest(BaseModel):
     user_id: uuid.UUID | None = None
     group_id: uuid.UUID | None = None

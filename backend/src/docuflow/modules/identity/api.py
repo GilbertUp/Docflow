@@ -17,6 +17,7 @@ from docuflow.modules.identity.models import (
     AclAnchor,
     Group,
     Permission,
+    Role,
     User,
     UserSession,
 )
@@ -45,6 +46,7 @@ from docuflow.modules.identity.schemas import (
     ReplaceAclRequest,
     ResetPasswordRequest,
     RoleHolderRequest,
+    RoleHoldersOut,
     RoleOut,
     SessionOut,
     SetPermissionsRequest,
@@ -401,6 +403,19 @@ def set_role_permissions(
     with ctx.services.db.tenant_session(who.tenant_id) as session:
         ctx.admin.require_system(session, who, "security.admin")
         ctx.admin.set_role_permissions(session, who, role_id, body.permissions)
+
+
+@admin_router.get("/roles/{role_id}/assignments")
+def role_assignments(role_id: uuid.UUID, ctx: Ctx, who: User_) -> RoleHoldersOut:
+    with ctx.services.db.tenant_session(who.tenant_id) as session:
+        _require_any(ctx, session, who, ["security.admin", "users.manage", "groups.manage"])
+        if session.get(Role, role_id) is None:
+            raise NotFound("Role not found.")
+        users, groups = queries.role_holders(session, role_id)
+        return RoleHoldersOut(
+            users=[UserOut.model_validate(item) for item in users],
+            groups=[GroupOut.model_validate(item) for item in groups],
+        )
 
 
 def _holder_permission(body: RoleHolderRequest) -> str:

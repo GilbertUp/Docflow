@@ -86,7 +86,11 @@ def get_cabinet(cabinet_id: uuid.UUID, ctx: Ctx, repo: Repo, who: User_) -> Cabi
     with ctx.services.db.tenant_session(who.tenant_id) as session:
         cabinet = repo.get_cabinet(session, who, cabinet_id)
         stats = repo.stats(session, who, Destination(cabinet_id=cabinet_id))
-        return CabinetDetail(cabinet=CabinetOut.model_validate(cabinet), stats=_stats(stats))
+        return CabinetDetail(
+            cabinet=CabinetOut.model_validate(cabinet),
+            stats=_stats(stats),
+            permissions=repo.permissions_on(session, who, cabinet.acl_anchor_id),
+        )
 
 
 @router.patch("/cabinets/{cabinet_id}")
@@ -170,6 +174,7 @@ def get_folder(folder_id: uuid.UUID, ctx: Ctx, repo: Repo, who: User_) -> Folder
             folder=FolderOut.model_validate(folder),
             breadcrumb=[CrumbOut(id=c.id, name=c.name, kind=c.kind) for c in crumbs],
             stats=_stats(stats),
+            permissions=repo.permissions_on(session, who, folder.acl_anchor_id),
         )
 
 

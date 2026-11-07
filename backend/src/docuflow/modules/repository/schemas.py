@@ -60,6 +60,7 @@ class StatsOut(BaseModel):
 class CabinetDetail(BaseModel):
     cabinet: CabinetOut
     stats: StatsOut
+    permissions: list[str]
 
 
 class CrumbOut(BaseModel):
@@ -72,6 +73,7 @@ class FolderDetail(BaseModel):
     folder: FolderOut
     breadcrumb: list[CrumbOut]
     stats: StatsOut
+    permissions: list[str]
 
 
 class ChildrenOut(BaseModel):

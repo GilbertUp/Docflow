@@ -113,6 +113,28 @@ services:
       retries: 10
     mem_limit: 384m
 
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/docker/web.Dockerfile
+    image: docuflow-web:dev
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:8080/"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 64m
+    restart: unless-stopped
+
   worker:
     <<: *backend
     command: ["celery", "-A", "docuflow.worker:celery_app", "worker", "-Q", "system,ingest,ocr,index,embed,compress,notify,integrations", "--concurrency=2", "--loglevel=INFO"]

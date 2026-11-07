@@ -14,6 +14,7 @@ from docuflow.modules.identity.models import (
     Group,
     GroupMember,
     Role,
+    RoleAssignment,
     RolePermission,
     User,
 )
@@ -71,6 +72,22 @@ def list_roles(
     ):
         granted[role_id].append(permission)
     return [(role, granted[role.id]) for role in roles], total
+
+
+def role_holders(session: Session, role_id: uuid.UUID) -> tuple[list[User], list[Group]]:
+    users = session.scalars(
+        select(User)
+        .join(RoleAssignment, RoleAssignment.user_id == User.id)
+        .where(RoleAssignment.role_id == role_id)
+        .order_by(User.display_name)
+    )
+    groups = session.scalars(
+        select(Group)
+        .join(RoleAssignment, RoleAssignment.group_id == Group.id)
+        .where(RoleAssignment.role_id == role_id)
+        .order_by(Group.name)
+    )
+    return list(users), list(groups)
 
 
 def list_api_keys(session: Session, limit: int, offset: int) -> tuple[list[ApiKey], int]:

@@ -67,6 +67,8 @@ def test_finance_and_hr_structure_over_http(app: FastAPI, db: Database, tenant: 
     assert [c["name"] for c in cabinets["items"]] == ["Finance", "HR"]
     overview = boss.get(f"{API}/cabinets/{finance['id']}").json()
     assert overview["stats"]["subfolders"] == 1
+    assert {"read", "create", "manage_acl", "move", "delete"} <= set(overview["permissions"])
+    assert "dispose" not in overview["permissions"]
 
 
 def test_each_team_sees_only_its_own_cabinet(app: FastAPI, db: Database, tenant: uuid.UUID) -> None:
@@ -103,7 +105,9 @@ def test_refusals_use_the_right_status_and_are_audited(
     allow(db, tenant, uuid.UUID(finance["acl_anchor_id"]), reader, "read")
     client, reader_csrf = sign_in(app, db, tenant, "reader")
 
-    assert client.get(f"{API}/cabinets/{finance['id']}").status_code == 200
+    detail = client.get(f"{API}/cabinets/{finance['id']}")
+    assert detail.status_code == 200
+    assert detail.json()["permissions"] == ["read"]  # the interface can hide what will not work
     denied = client.post(
         f"{API}/cabinets/{finance['id']}/folders", json={"name": "Nope"}, headers=reader_csrf
     )
