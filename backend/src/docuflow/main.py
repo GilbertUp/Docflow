@@ -12,7 +12,9 @@ from sqlalchemy import text
 
 from docuflow import __version__
 from docuflow.platform.bootstrap import Services, get_services
+from docuflow.platform.jobs import WORKER_HEARTBEAT_KEY
 from docuflow.platform.observability import RequestContextMiddleware, configure_logging
+from docuflow.web import install
 
 log = structlog.get_logger("docuflow.api")
 
@@ -27,6 +29,11 @@ def _check(name: str, probe: Any, results: dict[str, str]) -> None:
         results[name] = "ok"
 
 
+def _worker_alive(services: Services) -> None:
+    if not services.redis.exists(WORKER_HEARTBEAT_KEY):
+        raise RuntimeError("no worker heartbeat")
+
+
 def readiness(services: Services) -> dict[str, str]:
     def database() -> None:
         with services.db.unscoped_session() as session:
@@ -36,6 +43,7 @@ def readiness(services: Services) -> dict[str, str]:
     _check("database", database, results)
     _check("queue", services.redis.ping, results)
     _check("storage", services.store.check, results)
+    _check("workers", lambda: _worker_alive(services), results)
     return results
 
 
@@ -50,6 +58,7 @@ def create_app(services: Services | None = None) -> FastAPI:
         redoc_url=None,
     )
     app.add_middleware(RequestContextMiddleware)
+    install(app, active)
 
     health = APIRouter(tags=["health"])
 

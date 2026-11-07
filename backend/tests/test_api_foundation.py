@@ -22,7 +22,12 @@ def fake_services(db: Any, redis_ok: bool = True, store_ok: bool = True) -> Any:
     if not store_ok:
         store.check.side_effect = ConnectionError("down")
     return SimpleNamespace(
-        settings=SimpleNamespace(log_level="WARNING"), db=db, redis=redis, store=store
+        settings=SimpleNamespace(log_level="WARNING", environment="test"),
+        db=db,
+        audit=MagicMock(),
+        keys=MagicMock(),
+        redis=redis,
+        store=store,
     )
 
 
@@ -85,6 +90,14 @@ def test_metrics_are_exposed(client: TestClient) -> None:
 def test_ready_when_dependencies_are_up(client: TestClient) -> None:
     response = client.get("/health/ready")
     assert response.status_code == 200
+
+
+def test_not_ready_when_no_worker_is_alive() -> None:
+    services = fake_services(MagicMock())
+    services.redis.exists.return_value = 0
+    response = TestClient(create_app(services)).get("/health/ready")
+    assert response.status_code == 503
+    assert response.json()["checks"]["workers"] == "unavailable"
 
 
 def test_not_ready_when_a_dependency_is_down() -> None:

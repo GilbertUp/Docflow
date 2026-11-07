@@ -7,6 +7,8 @@ import os
 from alembic import context
 from sqlalchemy import create_engine, pool
 
+from docuflow.modules.identity import models as identity_models  # noqa: F401
+from docuflow.modules.repository import models as repository_models  # noqa: F401
 from docuflow.platform import models  # noqa: F401  # registers tables on the metadata
 from docuflow.platform.db import Base
 

@@ -2,15 +2,28 @@
 
 from __future__ import annotations
 
+import threading
 import uuid
 from typing import Any
 
+import structlog
 from celery import Celery
+from celery.signals import worker_ready
+from redis.exceptions import RedisError
 
 from docuflow.platform.bootstrap import get_services
-from docuflow.platform.jobs import DISPATCH_TOPIC, HandlerRegistry, JobContext, JobRunner
+from docuflow.platform.jobs import (
+    DISPATCH_TOPIC,
+    WORKER_HEARTBEAT_INTERVAL_SECONDS,
+    WORKER_HEARTBEAT_KEY,
+    WORKER_HEARTBEAT_TTL_SECONDS,
+    HandlerRegistry,
+    JobContext,
+    JobRunner,
+)
 
 registry = HandlerRegistry()
+log = structlog.get_logger("docuflow.worker")
 
 
 @registry.register("audit.checkpoint")
@@ -48,6 +61,27 @@ def run_job(tenant_id: str, job_id: str) -> str:
         services.settings.job_retry_base_seconds,
     )
     return runner.run(uuid.UUID(tenant_id), uuid.UUID(job_id))
+
+
+def beat_once() -> None:
+    """Readiness reads this key, so a dead worker cannot look healthy."""
+    get_services().redis.set(WORKER_HEARTBEAT_KEY, "1", ex=WORKER_HEARTBEAT_TTL_SECONDS)
+
+
+def _heartbeat_loop(stop: threading.Event) -> None:
+    while not stop.wait(WORKER_HEARTBEAT_INTERVAL_SECONDS):
+        try:
+            beat_once()
+        except RedisError:
+            log.warning("worker_heartbeat_failed")
+
+
+@worker_ready.connect  # type: ignore[untyped-decorator]
+def start_heartbeat(**_: Any) -> None:
+    beat_once()
+    threading.Thread(
+        target=_heartbeat_loop, args=(threading.Event(),), name="heartbeat", daemon=True
+    ).start()
 
 
 def publish(topic: str, payload: dict[str, Any]) -> None:
