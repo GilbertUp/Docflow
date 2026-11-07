@@ -31,7 +31,10 @@ Streaming, chunked AES-256-GCM with a per-object data key wrapped by a tenant ke
 ### Deduplication
 Per tenant only, because cross-tenant deduplication would reveal that another tenant holds a file. A duplicate upload creates a flagged link rather than a second object.
 
+## Spike result (2026-11-07)
+
+SeaweedFS 4.22 passed the conformance suite in CI: versioning, object lock on a compliance-mode version, multipart upload, range reads, and the encrypted storage suite. It used 176 MiB in that run. Each bucket needs its own volume slots, so `-volume.max` must allow for that. MinIO's reported status was not checked first-hand, because the choice no longer depends on it.
+
 ## Consequences
 - Storage can change without touching domain code.
 - Application-level encryption makes the backend untrusted, and keys become critical: backups must include wrapped keys, and key recovery goes into the DR runbook.
-- SeaweedFS may need more memory than MinIO did. The spike measures this.

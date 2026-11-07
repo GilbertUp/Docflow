@@ -2,7 +2,7 @@
 
 Self-hosted document management and process automation platform.
 
-**Status:** M0 foundation in progress. There are no user-facing features yet. See [the feature matrix](docs/FEATURE_MATRIX.md) and [the implementation plan](docs/00-implementation-plan.md).
+**Status:** M0 foundation complete. There are no user-facing features yet. See [the feature matrix](docs/FEATURE_MATRIX.md) and [the implementation plan](docs/00-implementation-plan.md).
 
 ## Run the tests
 

@@ -1,6 +1,6 @@
 # DocuFlow implementation plan
 
-**Status:** Accepted on 2026-11-06, with all defaults | **Current milestone:** M0
+**Status:** Accepted on 2026-11-06, with all defaults | **Current milestone:** M1, M0 passed on 2026-11-07
 
 This is the entry point for reviewing Phase 0. It covers what will be built, in what order, where the plan departs from the source documents, and what needs a decision.
 
@@ -157,7 +157,7 @@ Each milestone ends with a gate: tests pass, acceptance demo runs from a clean i
 | Windows host | F22 requires "a clean Linux machine" | CI Linux runners provide this evidence. |
 | Single laptop | Load tests would not represent production | Run them on owner-provided hardware; publish results with hardware details. |
 
-Memory use is an estimate until M0 measures it.
+The idle core stack measured about 655 MiB in CI ([M0 gate report](reports/m0-gate.md)). OCR and real documents will raise this. Local Docker cannot start on this laptop yet, so the gates run on CI.
 
 ---
 

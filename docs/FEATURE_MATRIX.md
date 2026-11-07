@@ -1,6 +1,6 @@
 # Feature completion matrix
 
-**Last updated:** 2026-11-06
+**Last updated:** 2026-11-07
 
 A feature is **Done** only when all ten criteria from the guide pass: model, migration, service, API, UI, authorization, audit, tests, documentation, and error handling.
 
@@ -8,7 +8,7 @@ A feature is **Done** only when all ten criteria from the guide pass: model, mig
 
 | ID | Feature | Milestone | Status | Open link to a later feature | Evidence |
 |---|---|---|---|---|---|
-| M0 | Foundation (not a spec feature) | M0 | In progress | Compose gate, SeaweedFS check and real Celery/Redis run are still to do; they need Docker or CI | 100 backend tests pass on embedded PostgreSQL, with lint, types, boundaries, licence and vulnerability checks clean |
+| M0 | Foundation (not a spec feature) | M0 | Done | | [Gate report](reports/m0-gate.md), CI run #6 |
 | F01 | Identity, organizations and permissions | M1 | Not started | | |
 | F02 | Cabinets and folders | M1 | Not started | Retention (F15), auto-routing (F07, F11) | |
 | F03 | Document ingestion | M2 | Not started | Email ingestion (F20) | |
