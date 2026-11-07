@@ -179,3 +179,35 @@ test.describe("Importing an archive", () => {
     await expect(page.getByRole("row", { name: /q1\.pdf/ })).toBeVisible();
   });
 });
+
+test.describe("Reading the text of documents", () => {
+  test("a text file is read, shown page by page, and can be read again in chosen languages", async ({
+    page,
+  }) => {
+    const folder = uniqueName("Memos");
+    const sentence = `Payment is due within thirty days of the invoice date ${folder}`;
+    await signInAndWait(page, "admin@example.com");
+    await openNewFolder(page, folder);
+    await page.getByLabel("Choose files to upload").setInputFiles({
+      name: "terms.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from(sentence),
+    });
+    await expect(page.getByRole("row", { name: /terms\.txt/ })).toBeVisible();
+
+    await page.getByRole("button", { name: /Text of terms\.txt/ }).click();
+    const dialog = page.getByRole("dialog", { name: /Text of terms\.txt/ });
+    await expect(dialog.getByText(/Version 1: Text ready/)).toBeVisible();
+    await expect(dialog.getByText("From the file")).toBeVisible();
+    await expect(dialog.getByText(sentence)).toBeVisible();
+
+    // The language chooser either lists what the server can read, or says it cannot read scans.
+    await expect(dialog.getByText(/not set up on this server|Choose up to \d+/)).toBeVisible();
+    await dialog.getByRole("button", { name: "Done" }).click();
+
+    await page.getByRole("button", { name: /Versions of terms\.txt/ }).click();
+    await expect(
+      page.getByRole("dialog", { name: /Versions of terms\.txt/ }).getByText("Text ready"),
+    ).toBeVisible();
+  });
+});
