@@ -70,7 +70,7 @@ def test_tenant_session_rejects_client_strings(db: Database, tenant: uuid.UUID) 
 def test_runtime_role_cannot_create_tenants(db: Database, tenant: uuid.UUID) -> None:
     with pytest.raises(ProgrammingError, match="permission denied"):  # noqa: PT012
         with db.tenant_session(tenant) as session:
-            session.add(Tenant(name="rogue"))
+            session.add(Tenant(name="rogue", slug="rogue"))
             session.flush()
 
 

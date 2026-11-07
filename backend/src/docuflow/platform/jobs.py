@@ -28,6 +28,9 @@ DISPATCH_TOPIC = "job.dispatch"
 MAX_ERROR_LENGTH = 2000
 REDISPATCH_AFTER = timedelta(seconds=60)
 BATCH_SIZE = 200
+WORKER_HEARTBEAT_KEY = "docuflow:worker:heartbeat"
+WORKER_HEARTBEAT_INTERVAL_SECONDS = 15
+WORKER_HEARTBEAT_TTL_SECONDS = 45
 
 
 @dataclass(frozen=True)

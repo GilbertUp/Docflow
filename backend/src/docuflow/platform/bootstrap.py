@@ -19,6 +19,7 @@ class Services:
     settings: Settings
     db: Database
     audit: AuditLog
+    keys: LocalKeyProvider
     store: S3ObjectStore
     objects: EncryptedObjects
     redis: Redis
@@ -39,6 +40,7 @@ def build_services(settings: Settings) -> Services:
             make_engine(settings.database_url), make_engine(settings.platform_database_url)
         ),
         audit=AuditLog(decode_key(settings.audit_hmac_key.get_secret_value())),
+        keys=keys,
         store=store,
         objects=EncryptedObjects(store, keys),
         redis=Redis.from_url(settings.redis_url, socket_connect_timeout=2),

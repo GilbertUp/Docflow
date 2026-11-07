@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import time
 import uuid
@@ -25,7 +26,7 @@ STORAGE_WAIT_ATTEMPTS = 30
 
 def create_tenant(services: Services, name: str) -> None:
     with services.db.platform_session() as session:
-        tenant = Tenant(name=name)
+        tenant = Tenant(name=name, slug=re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-"))
         session.add(tenant)
         session.flush()
         services.audit.record(

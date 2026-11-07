@@ -132,7 +132,8 @@ def audit(audit_key: bytes) -> AuditLog:
 
 def _make_tenant(db: Database) -> uuid.UUID:
     with db.platform_session() as session:
-        tenant = Tenant(name=f"tenant-{uuid.uuid4()}")
+        name = f"tenant-{uuid.uuid4()}"
+        tenant = Tenant(name=name, slug=name)
         session.add(tenant)
         session.flush()
         return tenant.id

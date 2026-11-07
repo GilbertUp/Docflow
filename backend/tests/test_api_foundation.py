@@ -87,6 +87,14 @@ def test_ready_when_dependencies_are_up(client: TestClient) -> None:
     assert response.status_code == 200
 
 
+def test_not_ready_when_no_worker_is_alive() -> None:
+    services = fake_services(MagicMock())
+    services.redis.exists.return_value = 0
+    response = TestClient(create_app(services)).get("/health/ready")
+    assert response.status_code == 503
+    assert response.json()["checks"]["workers"] == "unavailable"
+
+
 def test_not_ready_when_a_dependency_is_down() -> None:
     client = TestClient(create_app(fake_services(MagicMock(), redis_ok=False)))
     response = client.get("/health/ready")

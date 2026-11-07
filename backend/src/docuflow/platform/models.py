@@ -31,6 +31,7 @@ class Tenant(IdMixin, TimestampMixin, Base):
     __table_args__ = (CheckConstraint("status IN ('active', 'suspended')", name="status"),)
 
     name: Mapped[str] = mapped_column(String(200), unique=True)
+    slug: Mapped[str] = mapped_column(String(63), unique=True)
     status: Mapped[str] = mapped_column(String(20), default="active")
     timezone: Mapped[str] = mapped_column(String(64), default="Africa/Kigali")
     permission_epoch: Mapped[int] = mapped_column(BigInteger, default=0)
