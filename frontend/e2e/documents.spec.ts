@@ -211,3 +211,91 @@ test.describe("Reading the text of documents", () => {
     ).toBeVisible();
   });
 });
+
+test.describe("Document types", () => {
+  test("an administrator makes a type, a document is filled in, and mistakes are shown together", async ({
+    page,
+  }) => {
+    const typeName = uniqueName("Invoice type");
+    const folder = uniqueName("Typed");
+    await signInAndWait(page, "admin@example.com");
+
+    await page.getByRole("link", { name: "Document types", exact: true }).click();
+    await page.getByRole("button", { name: "New document type" }).click();
+    const editor = page.getByRole("dialog", { name: "New document type" });
+    await editor.getByRole("textbox", { name: /^Name/ }).fill(typeName);
+    await editor.getByLabel("Label (field 1)").fill("Invoice number");
+    await expect(editor.getByLabel("Key (field 1)")).toHaveValue("invoice_number");
+    await editor.getByLabel("Required (field 1)").check();
+    await editor.getByLabel("Must match pattern (field 1)").fill(String.raw`INV-\d{4}`);
+    await editor.getByRole("button", { name: "Add a field" }).click();
+    await editor.getByLabel("Label (field 2)").fill("Total");
+    await editor.getByLabel("Type (field 2)").selectOption("number");
+    await editor.getByLabel("Required (field 2)").check();
+    await editor.getByLabel("Lowest allowed (field 2)").fill("0");
+    await editor.getByRole("button", { name: "Create type" }).click();
+    const row = page.getByRole("row", { name: new RegExp(typeName) });
+    await expect(row).toContainText("Invoice number, Total");
+
+    await page.getByRole("link", { name: "Files", exact: true }).click();
+    await openNewFolder(page, folder);
+    await page.getByLabel("Choose files to upload").setInputFiles({
+      name: "invoice.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from(`invoice ${folder}`),
+    });
+    await expect(page.getByRole("row", { name: /invoice\.txt/ })).toBeVisible();
+
+    await page.getByRole("button", { name: /Details of invoice\.txt/ }).click();
+    const details = page.getByRole("dialog", { name: /Details of invoice\.txt/ });
+    await details.getByLabel("Document type").selectOption({ label: typeName });
+    await details.getByLabel(/Invoice number/).fill("not valid");
+    await details.getByLabel(/Total/).fill("-5");
+    await details.getByRole("button", { name: "Save" }).click();
+    await expect(details.getByText(/does not match the expected format/)).toBeVisible();
+    await expect(details.getByText(/Use 0 or more/)).toBeVisible();
+
+    await details.getByLabel(/Invoice number/).fill("INV-1042");
+    await details.getByLabel(/Total/).fill("1042.50");
+    await details.getByRole("button", { name: "Save" }).click();
+    await expect(details.getByText("Saved.")).toBeVisible();
+    await details.getByRole("button", { name: "Cancel" }).click();
+
+    await expect(page.getByRole("row", { name: /invoice\.txt/ })).toContainText(typeName);
+    await page.getByRole("button", { name: /Details of invoice\.txt/ }).click();
+    const again = page.getByRole("dialog", { name: /Details of invoice\.txt/ });
+    await expect(again.getByLabel(/Invoice number/)).toHaveValue("INV-1042");
+    await expect(again.getByLabel(/Total/)).toHaveValue("1042.5");
+  });
+
+  test("changing a type's fields publishes a new version, and an ordinary person cannot", async ({
+    page,
+    browser,
+  }) => {
+    const typeName = uniqueName("Versioned type");
+    await signInAndWait(page, "admin@example.com");
+    await page.getByRole("link", { name: "Document types", exact: true }).click();
+    await page.getByRole("button", { name: "New document type" }).click();
+    const editor = page.getByRole("dialog", { name: "New document type" });
+    await editor.getByRole("textbox", { name: /^Name/ }).fill(typeName);
+    await editor.getByLabel("Label (field 1)").fill("Reference");
+    await editor.getByRole("button", { name: "Create type" }).click();
+    const row = page.getByRole("row", { name: new RegExp(typeName) });
+    await expect(row).toBeVisible();
+
+    await row.locator("summary").click();
+    await row.getByRole("button", { name: "Change fields…", exact: true }).click();
+    const change = page.getByRole("dialog", { name: `Fields of ${typeName}` });
+    await expect(change.getByText(/publishes version 2/)).toBeVisible();
+    await change.getByRole("button", { name: "Add a field" }).click();
+    await change.getByLabel("Label (field 2)").fill("Approved by");
+    await change.getByRole("button", { name: "Publish new version" }).click();
+    await expect(page.getByRole("row", { name: new RegExp(typeName) })).toContainText(
+      "Reference, Approved by",
+    );
+
+    const felix = await newSession(browser, "felix@example.com");
+    await expect(felix.page.getByRole("link", { name: "Document types" })).toHaveCount(0);
+    await felix.context.close();
+  });
+});

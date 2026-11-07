@@ -68,6 +68,12 @@ for (const scheme of ["light", "dark"] as const) {
       // The demo document has no file, so the dialog says so instead of showing text.
       await expect(page.getByRole("dialog").getByText(/has no file|Version 1:/)).toBeVisible();
       await scan(page, "text dialog");
+      await page.getByRole("button", { name: "Done" }).click();
+
+      await page.getByRole("button", { name: /Details of Invoice ABC-1042\.pdf/ }).click();
+      await expect(page.getByRole("dialog", { name: /Details of/ })).toBeVisible();
+      await expect(page.getByLabel("Document type")).toBeVisible();
+      await scan(page, "details dialog");
     });
 
     test("administration pages and the account page", async ({ page }) => {
@@ -76,6 +82,7 @@ for (const scheme of ["light", "dark"] as const) {
         ["Users", "Users"],
         ["Groups", "Groups"],
         ["Roles", "Roles"],
+        ["Document types", "Document types"],
         ["API keys", "API keys"],
       ] as const) {
         await page.getByRole("link", { name: link, exact: true }).click();
