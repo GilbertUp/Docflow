@@ -9,7 +9,8 @@ WORKDIR /app
 COPY backend/pyproject.toml backend/alembic.ini ./
 COPY backend/src ./src
 COPY backend/migrations ./migrations
-RUN pip install . \n && python -c "import kombu.transport.redis, docuflow.platform.jobs, docuflow.cli"
+RUN pip install . \
+ && python -c "import kombu.transport.redis, docuflow.platform.jobs, docuflow.cli"
 
 USER docuflow
 EXPOSE 8000
