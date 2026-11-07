@@ -63,11 +63,15 @@ SLUG = "demo"
 class InMemoryRedis:
     """Just enough Redis for rate limiting and health checks."""
 
-    def __init__(self) -> None:
+    def __init__(self, count_attempts: bool = True) -> None:
+        # Automated tests sign in far more often than any person, all from one address.
+        self._count_attempts = count_attempts
         # name -> (count, moment the window ends)
         self._counts: dict[str, tuple[int, float]] = {}
 
     def incr(self, name: str) -> int:
+        if not self._count_attempts:
+            return 1
         count, ends = self._counts.get(name, (0, float("inf")))
         if time.monotonic() >= ends:
             count, ends = 0, float("inf")
@@ -161,7 +165,7 @@ def master_key() -> bytes:
     return key
 
 
-def build_services(urls: dict[str, str]) -> SimpleNamespace:
+def build_services(urls: dict[str, str], count_attempts: bool = True) -> SimpleNamespace:
     moto = ThreadedMotoServer(ip_address="127.0.0.1", port=0, verbose=False)
     moto.start()
     port = moto.get_host_and_port()[1]
@@ -173,7 +177,7 @@ def build_services(urls: dict[str, str]) -> SimpleNamespace:
         db=Database(make_engine(urls["docuflow_app"]), make_engine(urls["docuflow_platform"])),
         audit=AuditLog(root),
         keys=LocalKeyProvider(root),
-        redis=InMemoryRedis(),
+        redis=InMemoryRedis(count_attempts),
         store=store,
     )
 
@@ -308,7 +312,8 @@ def main() -> int:
         shutil.rmtree(DATA)
 
     urls = start_database()
-    services = build_services(urls)
+    # A fixed password means an automated run, which must not trip the sign-in rate limit.
+    services = build_services(urls, count_attempts=args.password is None)
     if args.seed:
         seed(services, args.password)
     app = create_app(services)  # type: ignore[arg-type]
