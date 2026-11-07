@@ -22,9 +22,17 @@ F03 turns the filing structure into a place that holds files. Uploads are the la
 - **No quarantine queue.** Because infected files are refused rather than held, the `quarantined` state and a review queue are unused. They can return if the owner wants infected files kept for analysis, which would need a separate, locked-down store.
 - **Rescans.** Signatures change, so already stored files may later match. A periodic rescan job belongs with the job framework and is not built.
 
+## New versions
+- **One pipeline.** `POST /documents/{id}/versions?filename=&reason=` takes the file as the body and runs the same checks, scan and storage as an upload. It needs the `version` right on the document, and answers 404 for a document the caller cannot read.
+- **The document row is the lock.** The filing transaction locks the document row, takes the next number, makes the new version current, updates the document's size, bumps its `row_version` and audits `document.version_added`. Concurrent new versions therefore take turns and numbers never repeat; a test runs four at once.
+- **History is kept.** Earlier versions stay downloadable at `GET /documents/{id}/versions/{number}/download`, with the same `download` right and the same audit as the current file. The version list shows metadata to anyone who can read the document.
+- **Same bytes.** A file identical to the current version is refused with 409, since it would add nothing. Going back to an older file is allowed: it adds a new version that shares that file's stored object.
+- **Archived means closed.** An archived document, or one inside an archived folder or cabinet, accepts no new version. The container is read directly, so a person holding rights on the document alone is not told the folder is missing.
+- **The title does not change.** A new version records its own file name; the document keeps its title and identity.
+
 ## Not in this slice
 - **Zip-bomb and archive limits** for Office files, and sandboxed conversion (ADR 0008), arrive with F04 and F05.
-- **New versions, batch and folder import, email ingestion, document copy and the duplicate-link table.** `ingestion_job` is also unused until imports exist.
+- **Restoring or deleting a version, comparing versions, batch and folder import, email ingestion, document copy and the duplicate-link table.** `ingestion_job` is also unused until imports exist.
 
 ## Consequences
 - No new runtime dependency.
