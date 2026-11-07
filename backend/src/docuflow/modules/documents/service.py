@@ -16,11 +16,11 @@ from __future__ import annotations
 import hashlib
 import re
 import uuid
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
-from typing import BinaryIO
+from typing import BinaryIO, TypeVar
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -38,6 +38,7 @@ from docuflow.platform.storage import EncryptedObjects, StoredObject
 SNIFF_BYTES = 8192
 READ = 1024 * 1024
 MAX_TITLE = 300
+MAX_REASON = 500
 OFFICE_TYPES = {
     "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -45,6 +46,9 @@ OFFICE_TYPES = {
 }
 TEXT_TYPES = {"txt": "text/plain", "csv": "text/csv"}
 CONTROL = re.compile(r"[\x00-\x1f\x7f]")
+
+
+T = TypeVar("T")
 
 
 class UnsupportedFileType(DomainError):
@@ -104,6 +108,20 @@ class Uploaded:
     version: DocumentVersion
     duplicate_of: uuid.UUID | None
     duplicate: bool
+
+
+@dataclass(frozen=True)
+class VersionAdded:
+    document: Document
+    version: DocumentVersion
+    duplicate: bool
+
+
+@dataclass(frozen=True)
+class VersionInfo:
+    version: DocumentVersion
+    size_bytes: int
+    mime: str
 
 
 @dataclass(frozen=True)
@@ -171,6 +189,41 @@ class DocumentService:
         """Files the bytes of a seekable stream, read from its start."""
         name = clean_filename(filename)
         self.check_can_upload(db, principal, destination)
+        mime, stored = self._ingest(db, principal, name, content)
+        return self._store_then(
+            stored, lambda current: self._file(db, principal, destination, name, mime, current)
+        )
+
+    def check_can_add_version(
+        self, db: Database, principal: Principal, document_id: uuid.UUID
+    ) -> None:
+        """Fails fast, before the caller sends a large body."""
+        with db.tenant_session(principal.tenant_id) as session:
+            self._repo.document_for_change(session, principal, document_id, "version")
+
+    def add_version(
+        self,
+        db: Database,
+        principal: Principal,
+        document_id: uuid.UUID,
+        filename: str,
+        content: BinaryIO,
+        reason: str = "",
+    ) -> VersionAdded:
+        """Adds a new version to a document. Earlier versions are kept and stay downloadable."""
+        name = clean_filename(filename)
+        reason = CONTROL.sub(" ", reason).strip()[:MAX_REASON]
+        self.check_can_add_version(db, principal, document_id)
+        mime, stored = self._ingest(db, principal, name, content)
+        return self._store_then(
+            stored,
+            lambda current: self._append(db, principal, document_id, name, mime, reason, current),
+        )
+
+    def _ingest(
+        self, db: Database, principal: Principal, name: str, content: BinaryIO
+    ) -> tuple[str, StoredObject]:
+        """Checks, scans and stores the bytes. Nothing is filed yet."""
         content.seek(0, 2)
         size = content.tell()
         content.seek(0)
@@ -178,14 +231,12 @@ class DocumentService:
             raise DomainError("The file is empty.")
         if size > self.max_upload_bytes:
             raise FileTooLarge(f"Files can be at most {self.max_upload_bytes // (1024 * 1024)} MB.")
-        head = content.read(SNIFF_BYTES)
-        mime = sniff(head, name)
+        mime = sniff(content.read(SNIFF_BYTES), name)
         if mime is None:
             raise UnsupportedFileType(
                 "That kind of file is not accepted. Use PDF, an image, Word, Excel, "
                 "PowerPoint, text or CSV."
             )
-
         self._screen(db, principal, name, content)
         content.seek(0)
 
@@ -200,15 +251,18 @@ class DocumentService:
                 found = session.scalar(select(BinaryObject.id).where(BinaryObject.sha256 == sha256))
                 return found is not None
 
-        stored = self._objects.put(tenant_id, chunks(), already_stored)
+        return mime, self._objects.put(tenant_id, chunks(), already_stored)
+
+    def _store_then(self, stored: StoredObject, action: Callable[[StoredObject], T]) -> T:
+        """Runs the filing step, and removes the stored object again if it fails."""
         try:
             try:
-                return self._file(db, principal, destination, name, mime, stored)
+                return action(stored)
             except IntegrityError:
                 # Another upload of the same bytes created the stored object first. Use theirs.
                 self._discard(stored)
                 stored = StoredObject(stored.sha256, stored.size, None, None, deduplicated=True)
-                return self._file(db, principal, destination, name, mime, stored)
+                return action(stored)
         except BaseException:
             self._discard(stored)
             raise
@@ -247,6 +301,35 @@ class DocumentService:
         if stored.key is not None:
             self._objects.delete(stored.key)
 
+    @staticmethod
+    def _binary(
+        session: Session, principal: Principal, mime: str, stored: StoredObject
+    ) -> tuple[BinaryObject, bool]:
+        """The stored object for these bytes: the existing one, or a new row. And whether shared."""
+        binary = session.scalar(
+            select(BinaryObject).where(BinaryObject.sha256 == stored.sha256).with_for_update()
+        )
+        if binary is not None:
+            session.execute(
+                update(BinaryObject)
+                .where(BinaryObject.id == binary.id)
+                .values(ref_count=BinaryObject.ref_count + 1)
+            )
+            return binary, True
+        if stored.key is None or stored.wrapped_data_key is None:
+            raise Conflict("The file could not be saved. Please upload it again.")
+        binary = BinaryObject(
+            tenant_id=principal.tenant_id,
+            sha256=stored.sha256,
+            size_bytes=stored.size,
+            mime=mime,
+            object_key=stored.key,
+            wrapped_data_key=stored.wrapped_data_key,
+        )
+        session.add(binary)
+        session.flush()
+        return binary, False
+
     def _file(
         self,
         db: Database,
@@ -257,31 +340,10 @@ class DocumentService:
         stored: StoredObject,
     ) -> Uploaded:
         with db.tenant_session(principal.tenant_id) as session:
-            binary = session.scalar(
-                select(BinaryObject).where(BinaryObject.sha256 == stored.sha256).with_for_update()
+            binary, duplicate = self._binary(session, principal, mime, stored)
+            duplicate_of = (
+                self._readable_match(session, principal, binary.id) if duplicate else None
             )
-            duplicate = binary is not None
-            duplicate_of: uuid.UUID | None = None
-            if binary is not None:
-                session.execute(
-                    update(BinaryObject)
-                    .where(BinaryObject.id == binary.id)
-                    .values(ref_count=BinaryObject.ref_count + 1)
-                )
-                duplicate_of = self._readable_match(session, principal, binary.id)
-            elif stored.key is None or stored.wrapped_data_key is None:
-                raise Conflict("The file could not be saved. Please upload it again.")
-            else:
-                binary = BinaryObject(
-                    tenant_id=principal.tenant_id,
-                    sha256=stored.sha256,
-                    size_bytes=stored.size,
-                    mime=mime,
-                    object_key=stored.key,
-                    wrapped_data_key=stored.wrapped_data_key,
-                )
-                session.add(binary)
-                session.flush()
             document = self._repo.file_document(
                 session, principal, destination, name, binary.size_bytes
             )
@@ -313,6 +375,70 @@ class DocumentService:
             session.flush()
             return Uploaded(document, version, duplicate_of, duplicate)
 
+    def _append(
+        self,
+        db: Database,
+        principal: Principal,
+        document_id: uuid.UUID,
+        name: str,
+        mime: str,
+        reason: str,
+        stored: StoredObject,
+    ) -> VersionAdded:
+        with db.tenant_session(principal.tenant_id) as session:
+            # The row lock makes concurrent new versions take turns, so numbers never repeat.
+            document = self._repo.document_for_change(
+                session, principal, document_id, "version", lock=True
+            )
+            binary, duplicate = self._binary(session, principal, mime, stored)
+            current = (
+                session.get(DocumentVersion, document.current_version_id)
+                if document.current_version_id
+                else None
+            )
+            if current is not None and current.binary_object_id == binary.id:
+                raise Conflict("That file is identical to the current version.")
+            number = (
+                session.scalar(
+                    select(func.max(DocumentVersion.number)).where(
+                        DocumentVersion.document_id == document_id
+                    )
+                )
+                or 0
+            ) + 1
+            version = DocumentVersion(
+                tenant_id=principal.tenant_id,
+                document_id=document_id,
+                number=number,
+                binary_object_id=binary.id,
+                original_filename=name,
+                reason=reason,
+                scan_engine=self._scanner.name,
+                state="released",
+                created_by=principal.user_id,
+            )
+            session.add(version)
+            session.flush()
+            document.current_version_id = version.id
+            document.size_bytes = binary.size_bytes
+            document.row_version += 1
+            self._record(
+                session,
+                principal,
+                "document.version_added",
+                document_id,
+                {
+                    "number": number,
+                    "sha256": binary.sha256,
+                    "size_bytes": binary.size_bytes,
+                    "mime": binary.mime,
+                    "reason": reason,
+                    "duplicate": duplicate,
+                },
+            )
+            session.flush()
+            return VersionAdded(document, version, duplicate)
+
     def _readable_match(
         self, session: Session, principal: Principal, binary_id: uuid.UUID
     ) -> uuid.UUID | None:
@@ -332,32 +458,44 @@ class DocumentService:
 
     def versions(
         self, session: Session, principal: Principal, document_id: uuid.UUID
-    ) -> list[DocumentVersion]:
+    ) -> list[VersionInfo]:
         self._repo.get_document(session, principal, document_id)
-        return list(
-            session.scalars(
-                select(DocumentVersion)
-                .where(DocumentVersion.document_id == document_id)
-                .order_by(DocumentVersion.number)
-            )
+        rows = session.execute(
+            select(DocumentVersion, BinaryObject)
+            .join(BinaryObject, BinaryObject.id == DocumentVersion.binary_object_id)
+            .where(DocumentVersion.document_id == document_id)
+            .order_by(DocumentVersion.number)
         )
+        return [VersionInfo(version, binary.size_bytes, binary.mime) for version, binary in rows]
 
     def prepare_download(
-        self, session: Session, principal: Principal, document_id: uuid.UUID
+        self,
+        session: Session,
+        principal: Principal,
+        document_id: uuid.UUID,
+        number: int | None = None,
     ) -> Download:
+        """The current version, or an earlier one when its number is given."""
         document = self._repo.get_document(session, principal, document_id)
         tree = self._policy.tree(session, principal.tenant_id, principal.user_id)
         if not tree.decide(document.acl_anchor_id, "download").allowed:
             raise Forbidden(
                 "You do not have permission to do that.", details={"required": "download"}
             )
-        version = (
-            session.get(DocumentVersion, document.current_version_id)
-            if document.current_version_id
-            else None
-        )
+        if number is None:
+            version = (
+                session.get(DocumentVersion, document.current_version_id)
+                if document.current_version_id
+                else None
+            )
+        else:
+            version = session.scalar(
+                select(DocumentVersion).where(
+                    DocumentVersion.document_id == document_id, DocumentVersion.number == number
+                )
+            )
         if version is None:
-            raise NotFound("That document has no file.")
+            raise NotFound("That version does not exist.")
         if version.state != "released":
             raise Conflict("That file is not available yet.")
         binary = session.get(BinaryObject, version.binary_object_id)

@@ -19,7 +19,15 @@ class VersionOut(BaseModel):
     state: str
     reason: str
     scan_engine: str
+    size_bytes: int
+    mime: str
     created_at: datetime
+
+
+class VersionResult(BaseModel):
+    document: DocumentOut
+    version: VersionOut
+    duplicate: bool
 
 
 class UploadResult(BaseModel):
