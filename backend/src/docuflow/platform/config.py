@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     audit_hmac_key: SecretStr = Field(description="Base64 key held outside the database")
 
     max_upload_bytes: int = Field(default=100 * 1024 * 1024, gt=0)
+    max_import_bytes: int = Field(default=512 * 1024 * 1024, gt=0)
+    import_max_entries: int = Field(default=1000, gt=0)
+    import_max_expanded_mb: int = Field(default=1024, gt=0)
     # "none" is for development and tests. Production must scan.
     scanner: Literal["none", "clamav"] = "none"
     clamav_host: str = "clamav"

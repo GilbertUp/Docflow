@@ -11,6 +11,9 @@ from celery import Celery
 from celery.signals import worker_ready
 from redis.exceptions import RedisError
 
+from docuflow.modules.documents.wiring import build_documents
+from docuflow.modules.identity.policy import PolicyService
+from docuflow.modules.repository.service import RepositoryService
 from docuflow.platform.bootstrap import get_services
 from docuflow.platform.jobs import (
     DISPATCH_TOPIC,
@@ -31,6 +34,15 @@ def audit_checkpoint(job: JobContext) -> None:
     services = get_services()
     with services.db.tenant_session(job.tenant_id) as session:
         services.audit.write_checkpoint(session, job.tenant_id, services.store)
+
+
+@registry.register("documents.import")
+def documents_import(job: JobContext) -> None:
+    services = get_services()
+    policy = PolicyService()
+    repo = RepositoryService(services.audit, policy)
+    _, imports = build_documents(services, repo, policy)
+    imports.run(services.db, job)
 
 
 def make_celery(broker_url: str) -> Celery:

@@ -24,6 +24,29 @@ class VersionOut(BaseModel):
     created_at: datetime
 
 
+class ImportItemOut(BaseModel):
+    path: str
+    status: str
+    message: str
+    document_id: uuid.UUID | None
+    duplicate: bool
+
+
+class ImportOut(BaseModel):
+    id: uuid.UUID
+    status: str
+    archive_name: str
+    file_count: int
+    filed: int
+    duplicates: int
+    failed: int
+    error: str | None
+    created_at: datetime
+    finished_at: datetime | None
+    # Failed files come first, then filed ones, up to a limit.
+    items: list[ImportItemOut]
+
+
 class VersionResult(BaseModel):
     document: DocumentOut
     version: VersionOut
