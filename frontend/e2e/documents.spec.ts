@@ -1,9 +1,23 @@
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "@playwright/test";
 
 import { newSession, signInAndWait, uniqueName } from "./helpers";
 
 const PDF = (text: string) =>
   Buffer.from(`%PDF-1.7\n1 0 obj<<>>endobj\n${text}\n%%EOF`, "utf8");
+
+/**
+ * Makes a folder in Finance and opens it. Waits until the new folder's own page is showing, so a
+ * file chosen next goes to it and not to the page that is being replaced.
+ */
+async function openNewFolder(page: Page, name: string) {
+  await page.getByRole("link", { name: "Finance", exact: true }).first().click();
+  await page.getByRole("button", { name: "New folder" }).click();
+  await page.getByLabel("Folder name").fill(name);
+  await page.getByRole("button", { name: "Create folder" }).click();
+  await page.getByRole("link", { name }).first().click();
+  await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
+  await expect(page.getByText("No documents here")).toBeVisible();
+}
 
 test.describe("Filing documents", () => {
   test("upload, see it listed, download the same bytes, and spot a repeat upload", async ({
@@ -12,12 +26,7 @@ test.describe("Filing documents", () => {
     const folder = uniqueName("Invoices");
     const body = PDF(`supplier ABC ${folder}`);
     await signInAndWait(page, "admin@example.com");
-    await page.getByRole("link", { name: "Finance", exact: true }).first().click();
-    await page.getByRole("button", { name: "New folder" }).click();
-    await page.getByLabel("Folder name").fill(folder);
-    await page.getByRole("button", { name: "Create folder" }).click();
-    await page.getByRole("link", { name: folder }).first().click();
-    await expect(page.getByText("No documents here")).toBeVisible();
+    await openNewFolder(page, folder);
 
     await page.getByLabel("Choose files to upload").setInputFiles({
       name: "ABC invoice.pdf",
@@ -52,11 +61,7 @@ test.describe("Filing documents", () => {
   }) => {
     const folder = uniqueName("Refusals");
     await signInAndWait(page, "admin@example.com");
-    await page.getByRole("link", { name: "Finance", exact: true }).first().click();
-    await page.getByRole("button", { name: "New folder" }).click();
-    await page.getByLabel("Folder name").fill(folder);
-    await page.getByRole("button", { name: "Create folder" }).click();
-    await page.getByRole("link", { name: folder }).first().click();
+    await openNewFolder(page, folder);
 
     await page.getByLabel("Choose files to upload").setInputFiles({
       name: "invoice.pdf",
@@ -71,11 +76,7 @@ test.describe("Filing documents", () => {
   test("someone from another department cannot download it", async ({ page, browser }) => {
     const folder = uniqueName("Private");
     await signInAndWait(page, "admin@example.com");
-    await page.getByRole("link", { name: "Finance", exact: true }).first().click();
-    await page.getByRole("button", { name: "New folder" }).click();
-    await page.getByLabel("Folder name").fill(folder);
-    await page.getByRole("button", { name: "Create folder" }).click();
-    await page.getByRole("link", { name: folder }).first().click();
+    await openNewFolder(page, folder);
     await page.getByLabel("Choose files to upload").setInputFiles({
       name: "payroll-note.pdf",
       mimeType: "application/pdf",
@@ -100,11 +101,7 @@ test.describe("Document versions", () => {
     const first = PDF(`terms net 30 ${folder}`);
     const second = PDF(`terms net 45 ${folder}`);
     await signInAndWait(page, "admin@example.com");
-    await page.getByRole("link", { name: "Finance", exact: true }).first().click();
-    await page.getByRole("button", { name: "New folder" }).click();
-    await page.getByLabel("Folder name").fill(folder);
-    await page.getByRole("button", { name: "Create folder" }).click();
-    await page.getByRole("link", { name: folder }).first().click();
+    await openNewFolder(page, folder);
     await page.getByLabel("Choose files to upload").setInputFiles({
       name: "contract.pdf",
       mimeType: "application/pdf",
