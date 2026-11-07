@@ -413,6 +413,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/documents/{document_id}/text": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Document Text
+         * @description The text of the current version, page by page. Needs the preview right and is audited.
+         */
+        get: operations["document_text_api_v1_documents__document_id__text_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{document_id}/text/reprocess": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reprocess Text
+         * @description Reads the current version again, in the languages given (for example eng,deu).
+         */
+        post: operations["reprocess_text_api_v1_documents__document_id__text_reprocess_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/documents/{document_id}/versions": {
         parameters: {
             query?: never;
@@ -640,6 +680,26 @@ export interface paths {
          * @description Progress and results of an import. Only the person who started it can read it.
          */
         get: operations["get_import_api_v1_imports__import_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ocr/languages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ocr Languages
+         * @description The languages this server can read, and the defaults used when none is chosen.
+         */
+        get: operations["ocr_languages_api_v1_ocr_languages_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1228,6 +1288,21 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** LanguagesOut */
+        LanguagesOut: {
+            /** Available */
+            available: boolean;
+            /** Defaults */
+            defaults: string[];
+            /** Engine */
+            engine: string;
+            /** Engine Version */
+            engine_version: string;
+            /** Languages */
+            languages: string[];
+            /** Max Per Run */
+            max_per_run: number;
+        };
         /** LoginRequest */
         LoginRequest: {
             /** Email */
@@ -1279,6 +1354,21 @@ export interface components {
             destination: components["schemas"]["DestinationModel"];
             /** Row Version */
             row_version: number;
+        };
+        /** PageTextOut */
+        PageTextOut: {
+            /** Confidence */
+            confidence: number | null;
+            /** Is Blank */
+            is_blank: boolean;
+            /** Language */
+            language: string;
+            /** Number */
+            number: number;
+            /** Source */
+            source: string;
+            /** Text */
+            text: string;
         };
         /** Page[ApiKeyOut] */
         Page_ApiKeyOut_: {
@@ -1453,6 +1543,28 @@ export interface components {
             /** Subtree Documents */
             subtree_documents: number;
         };
+        /** TextOut */
+        TextOut: {
+            /** Error */
+            error: string | null;
+            /** Pages */
+            pages: components["schemas"]["PageTextOut"][];
+            /** State */
+            state: string;
+            /** Total Pages */
+            total_pages: number;
+            /** Version */
+            version: number;
+        };
+        /** TextRequestOut */
+        TextRequestOut: {
+            /** Languages */
+            languages: string[];
+            /** State */
+            state: string;
+            /** Version */
+            version: number;
+        };
         /** UpdateCabinetRequest */
         UpdateCabinetRequest: {
             /** Description */
@@ -1568,6 +1680,8 @@ export interface components {
             size_bytes: number;
             /** State */
             state: string;
+            /** Text State */
+            text_state: string;
         };
         /** VersionResult */
         VersionResult: {
@@ -2470,6 +2584,73 @@ export interface operations {
             };
         };
     };
+    document_text_api_v1_documents__document_id__text_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TextOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reprocess_text_api_v1_documents__document_id__text_reprocess_post: {
+        parameters: {
+            query?: {
+                languages?: string;
+            };
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TextRequestOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_versions_api_v1_documents__document_id__versions_get: {
         parameters: {
             query?: never;
@@ -3051,6 +3232,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ocr_languages_api_v1_ocr_languages_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LanguagesOut"];
                 };
             };
         };

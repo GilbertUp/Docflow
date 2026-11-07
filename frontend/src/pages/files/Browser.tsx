@@ -23,6 +23,7 @@ import {
 } from "../../components/ui";
 import { AclDialog } from "./AclDialog";
 import { ImportPanel } from "./ImportPanel";
+import { TextDialog } from "./TextDialog";
 import { VersionsDialog } from "./VersionsDialog";
 import {
   DeleteDialog,
@@ -44,6 +45,7 @@ type DialogState =
   | { kind: "delete"; target: Target }
   | { kind: "acl" }
   | { kind: "versions"; id: string; title: string }
+  | { kind: "text"; id: string; title: string }
   | null;
 
 interface Container {
@@ -489,6 +491,17 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
                             Download<span className="sr-only"> {document.title}</span>
                           </a>
                         ) : null}
+                        {can("preview") ? (
+                          <button
+                            type="button"
+                            className="btn btn-quiet"
+                            onClick={() =>
+                              setDialog({ kind: "text", id: document.id, title: document.title })
+                            }
+                          >
+                            Text<span className="sr-only"> of {document.title}</span>
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           className="btn btn-quiet"
@@ -575,6 +588,14 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
       ) : null}
       {dialog?.kind === "acl" ? (
         <AclDialog anchorId={container.anchorId} title={container.name} onClose={() => setDialog(null)} />
+      ) : null}
+      {dialog?.kind === "text" ? (
+        <TextDialog
+          documentId={dialog.id}
+          title={dialog.title}
+          canReprocess={can("edit_metadata") && !archived}
+          onClose={() => setDialog(null)}
+        />
       ) : null}
       {dialog?.kind === "versions" ? (
         <VersionsDialog

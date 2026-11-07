@@ -635,3 +635,46 @@ input[aria-invalid="true"] {
     transition: none !important;
   }
 }
+
+
+/* Text of a document */
+.text-pages {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  max-height: 50vh;
+  overflow: auto;
+}
+
+.text-page {
+  margin: 0;
+  padding: 0.75rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--primary-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font: inherit;
+}
+
+.languages {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  margin: 0 0 1rem;
+}
+
+.language-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0.25rem 1rem;
+  max-height: 14rem;
+  overflow: auto;
+}
+
+.check {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  font-weight: 400;
+}

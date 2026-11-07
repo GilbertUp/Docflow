@@ -15,6 +15,7 @@ import {
   formatDate,
 } from "../../components/ui";
 import { useRefreshFiles } from "./dialogs";
+import { stateLabel } from "./TextDialog";
 
 /** The history of one document, and a way to add a new version. */
 export function VersionsDialog({
@@ -77,6 +78,7 @@ export function VersionsDialog({
                 <th scope="col">Size</th>
                 <th scope="col">Added</th>
                 <th scope="col">Reason</th>
+                <th scope="col">Text</th>
                 <th scope="col">
                   <span className="sr-only">Actions</span>
                 </th>
@@ -93,6 +95,7 @@ export function VersionsDialog({
                   <td>{formatBytes(row.size_bytes)}</td>
                   <td>{formatDate(row.created_at)}</td>
                   <td>{row.reason || "—"}</td>
+                  <td>{stateLabel(row.text_state)}</td>
                   <td className="actions">
                     {canDownload ? (
                       <a
