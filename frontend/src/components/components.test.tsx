@@ -7,7 +7,7 @@ import { RESOURCE_PERMISSIONS, type AclEntry } from "../api/types";
 import { addEntry, entryKey } from "../pages/files/AclDialog";
 import { mockApi, renderWithQuery } from "../test-utils";
 import { FolderTree } from "./FolderTree";
-import { Dialog, formatBytes } from "./ui";
+import { ActionMenu, Dialog, describeDevice, formatBytes } from "./ui";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -156,5 +156,73 @@ describe("FolderTree when choosing a destination", () => {
     mockApi({ "GET /cabinets": { body: { items: [], total: 0, limit: 200, offset: 0 } } });
     renderWithQuery(<FolderTree mode="navigate" />);
     expect(await screen.findByText(/no cabinets yet/i)).toBeInTheDocument();
+  });
+});
+
+describe("ActionMenu", () => {
+  function setup() {
+    renderWithQuery(
+      <div>
+        <ActionMenu label="Actions for Invoices">
+          <button type="button">Rename</button>
+        </ActionMenu>
+        <button type="button">Elsewhere</button>
+      </div>,
+    );
+    const details = document.querySelector("details") as HTMLDetailsElement;
+    return { details, summary: screen.getByText(/Actions/) };
+  }
+
+  it("stays open after its button is clicked", async () => {
+    const user = userEvent.setup();
+    const { details, summary } = setup();
+    await user.click(summary);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(details.open).toBe(true);
+  });
+
+  it("closes after an action is chosen", async () => {
+    const user = userEvent.setup();
+    const { details, summary } = setup();
+    await user.click(summary);
+    await user.click(screen.getByRole("button", { name: "Rename" }));
+    await waitFor(() => expect(details.open).toBe(false));
+  });
+
+  it("closes when something else is clicked, and on Escape", async () => {
+    const user = userEvent.setup();
+    const { details, summary } = setup();
+    await user.click(summary);
+    await user.click(screen.getByRole("button", { name: "Elsewhere" }));
+    expect(details.open).toBe(false);
+
+    await user.click(summary);
+    expect(details.open).toBe(true);
+    await user.keyboard("{Escape}");
+    expect(details.open).toBe(false);
+  });
+});
+
+describe("describeDevice", () => {
+  it.each([
+    [
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36 Edg/157.0.0.0",
+      "Edge on Windows",
+    ],
+    ["Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0", "Firefox on Linux"],
+    [
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
+      "Safari on iOS",
+    ],
+    [
+      "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36",
+      "Chrome on Android",
+    ],
+    ["Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Safari/605.1.15", "Safari on macOS"],
+    ["curl/8.5.0", "Unknown device"],
+    [null, "Unknown device"],
+    ["", "Unknown device"],
+  ])("names %s as %s", (agent, expected) => {
+    expect(describeDevice(agent)).toBe(expected);
   });
 });

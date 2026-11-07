@@ -197,7 +197,7 @@ export function AclDialog({
           {saved && !dirty ? <Notice tone="success">Saved. The change applies immediately.</Notice> : null}
           <FormActions>
             <button type="button" className="btn" onClick={onClose}>
-              Close
+              Done
             </button>
             <button
               type="button"

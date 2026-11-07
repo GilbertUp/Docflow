@@ -296,7 +296,9 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
               <thead>
                 <tr>
                   <th scope="col">Name</th>
-                  <th scope="col">Created</th>
+                  <th scope="col" className="hide-narrow">
+                    Created
+                  </th>
                   <th scope="col">
                     <span className="sr-only">Actions</span>
                   </th>
@@ -311,7 +313,7 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
                         <span className="badge badge-warn">Archived</span>
                       ) : null}
                     </td>
-                    <td>{formatDate(folder.created_at)}</td>
+                    <td className="hide-narrow">{formatDate(folder.created_at)}</td>
                     <td className="actions">
                       <ActionMenu label={`Actions for ${folder.name}`}>
                         <button type="button" onClick={() => setDialog({ kind: "rename", target: folderTarget(folder) })}>

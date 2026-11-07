@@ -113,6 +113,53 @@ describe("signing in", () => {
   });
 });
 
+describe("where you land after signing in", () => {
+  const accountRoutes = {
+    "GET /auth/sessions": { body: [] },
+    "GET /cabinets": emptyPage,
+  };
+
+  it("returns to the page you were on when a session had run out", async () => {
+    const user = userEvent.setup();
+    let signedIn = false;
+    mockApi({
+      "GET /auth/me": () => (signedIn ? me() : unauthenticated),
+      "POST /auth/login": () => {
+        signedIn = true;
+        return { body: { state: "active", must_change_password: false, csrf_token: "c" } };
+      },
+      ...accountRoutes,
+    });
+    renderApp("/account");
+    await fillSignIn(user);
+    expect(await screen.findByRole("heading", { name: /your account/i })).toBeInTheDocument();
+  });
+
+  it("does not send the next person to the last person's page after a deliberate sign-out", async () => {
+    const user = userEvent.setup();
+    let signedIn = true;
+    mockApi({
+      "GET /auth/me": () => (signedIn ? me() : unauthenticated),
+      "POST /auth/logout": () => {
+        signedIn = false;
+        return { status: 204 };
+      },
+      "POST /auth/login": () => {
+        signedIn = true;
+        return { body: { state: "active", must_change_password: false, csrf_token: "c" } };
+      },
+      ...accountRoutes,
+    });
+    renderApp("/account");
+    await screen.findByRole("heading", { name: /your account/i });
+    await user.click(screen.getByRole("button", { name: /^sign out$/i }));
+    await fillSignIn(user);
+
+    expect(await screen.findByRole("heading", { name: /cabinets/i })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /your account/i })).not.toBeInTheDocument();
+  });
+});
+
 describe("protected pages", () => {
   it("send visitors to the sign-in page", async () => {
     mockApi({ "GET /auth/me": unauthenticated });

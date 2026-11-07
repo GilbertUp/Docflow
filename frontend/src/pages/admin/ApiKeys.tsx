@@ -60,7 +60,9 @@ export function ApiKeys() {
                 <tr>
                   <th scope="col">Name</th>
                   <th scope="col">Starts with</th>
-                  <th scope="col">Last used</th>
+                  <th scope="col" className="hide-narrow">
+                    Last used
+                  </th>
                   <th scope="col">Expires</th>
                   <th scope="col">
                     <span className="sr-only">Actions</span>
@@ -77,7 +79,7 @@ export function ApiKeys() {
                     <td>
                       <code>{key.prefix}…</code>
                     </td>
-                    <td>{formatDate(key.last_used_at)}</td>
+                    <td className="hide-narrow">{formatDate(key.last_used_at)}</td>
                     <td>{key.expires_at ? formatDate(key.expires_at) : "Never"}</td>
                     <td className="actions">
                       {key.revoked_at ? null : (

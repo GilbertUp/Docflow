@@ -12,6 +12,7 @@ import {
   Notice,
   Spinner,
   TextField,
+  describeDevice,
   formatDate,
 } from "../components/ui";
 import { PasswordForm } from "./PasswordChange";
@@ -162,7 +163,9 @@ function SessionsPanel() {
             <thead>
               <tr>
                 <th scope="col">Device</th>
-                <th scope="col">Address</th>
+                <th scope="col" className="hide-narrow">
+                  Address
+                </th>
                 <th scope="col">Started</th>
                 <th scope="col">
                   <span className="sr-only">Actions</span>
@@ -173,10 +176,10 @@ function SessionsPanel() {
               {sessions.data.map((item) => (
                 <tr key={item.id}>
                   <td>
-                    {item.device ?? "Unknown device"}
+                    {describeDevice(item.device)}
                     {item.current ? <span className="badge badge-ok">This device</span> : null}
                   </td>
-                  <td>{item.ip ?? "—"}</td>
+                  <td className="hide-narrow">{item.ip ?? "—"}</td>
                   <td>{formatDate(item.created_at)}</td>
                   <td className="actions">
                     {item.current ? null : (
@@ -186,7 +189,7 @@ function SessionsPanel() {
                         disabled={revoke.isPending}
                         onClick={() => revoke.mutate(item.id)}
                       >
-                        Sign out
+                        Sign out<span className="sr-only"> {describeDevice(item.device)}</span>
                       </button>
                     )}
                   </td>

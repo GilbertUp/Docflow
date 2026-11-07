@@ -263,13 +263,34 @@ export function ConfirmDialog({
 /** A compact menu of actions. Native details keeps it keyboard accessible without scripting. */
 export function ActionMenu({ label, children }: { label: string; children: ReactNode }) {
   const ref = useRef<HTMLDetailsElement>(null);
+
+  useEffect(() => {
+    // Clicking anywhere else closes an open menu.
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      const menu = ref.current;
+      if (menu?.open && event.target instanceof Node && !menu.contains(event.target)) {
+        menu.removeAttribute("open");
+      }
+    };
+    document.addEventListener("click", closeOnOutsideClick);
+    return () => document.removeEventListener("click", closeOnOutsideClick);
+  }, []);
+
   return (
     <details
       ref={ref}
       className="menu"
-      onClick={() => {
-        // Close after choosing an action.
-        setTimeout(() => ref.current?.removeAttribute("open"), 0);
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && ref.current?.open) {
+          ref.current.removeAttribute("open");
+          ref.current.querySelector("summary")?.focus();
+        }
+      }}
+      onClick={(event) => {
+        // Close after choosing an action, but not when the menu button itself is clicked.
+        if (event.target instanceof Element && event.target.closest(".menu-list button")) {
+          setTimeout(() => ref.current?.removeAttribute("open"), 0);
+        }
       }}
     >
       <summary className="btn btn-quiet" aria-label={label}>
@@ -290,6 +311,38 @@ export function formatBytes(bytes: number): string {
     unit += 1;
   }
   return `${value.toFixed(value < 10 ? 1 : 0)} ${units[unit]}`;
+}
+
+/** A readable name for a browser's technical identifier, such as "Edge on Windows". */
+export function describeDevice(userAgent: string | null | undefined): string {
+  if (!userAgent) return "Unknown device";
+  // Order matters: Edge and Opera also say Chrome, and Android also says Linux.
+  const browser = /Edg\//.test(userAgent)
+    ? "Edge"
+    : /OPR\/|Opera/.test(userAgent)
+      ? "Opera"
+      : /Firefox\//.test(userAgent)
+        ? "Firefox"
+        : /Chrome\/|CriOS\//.test(userAgent)
+          ? "Chrome"
+          : /Safari\//.test(userAgent)
+            ? "Safari"
+            : null;
+  const system = /Windows/.test(userAgent)
+    ? "Windows"
+    : /Android/.test(userAgent)
+      ? "Android"
+      : /iPhone|iPad|iPod/.test(userAgent)
+        ? "iOS"
+        : /Mac OS X|Macintosh/.test(userAgent)
+          ? "macOS"
+          : /CrOS/.test(userAgent)
+            ? "ChromeOS"
+            : /Linux/.test(userAgent)
+              ? "Linux"
+              : null;
+  if (browser && system) return `${browser} on ${system}`;
+  return browser ?? system ?? "Unknown device";
 }
 
 export function formatDate(value: string | null | undefined): string {

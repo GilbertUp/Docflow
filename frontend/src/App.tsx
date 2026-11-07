@@ -15,11 +15,14 @@ import { ForcedPasswordChange } from "./pages/PasswordChange";
 
 /** Everything except the sign-in page needs a session, and a new user must pick a password. */
 function RequireAuth() {
-  const { status, me } = useAuth();
+  const { status, me, signedOutByUser } = useAuth();
   const location = useLocation();
   if (status === "loading") return <Spinner label="Checking your session" />;
   if (status !== "authenticated") {
-    return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
+    // Remember where an expired session was, but not after someone chose to sign out: the next
+    // person to sign in on this computer must not land on the last person's page.
+    const state = signedOutByUser ? undefined : { from: location.pathname + location.search };
+    return <Navigate to="/login" replace state={state} />;
   }
   if (me?.user.must_change_password) return <ForcedPasswordChange />;
   return <Outlet />;

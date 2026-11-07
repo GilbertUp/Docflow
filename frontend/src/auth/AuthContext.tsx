@@ -18,6 +18,8 @@ interface AuthValue {
   status: AuthStatus;
   me: Me | null;
   loadError: string | null;
+  /** True after the person chose to sign out, as opposed to a session that ran out. */
+  signedOutByUser: boolean;
   login: (organization: string, email: string, password: string) => Promise<void>;
   verifyMfa: (code: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -32,6 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [me, setMe] = useState<Me | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [signedOutByUser, setSignedOutByUser] = useState(false);
 
   const clear = useCallback(() => {
     setCsrfToken(null);
@@ -47,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setMe(result);
       setStatus("authenticated");
       setLoadError(null);
+      setSignedOutByUser(false);
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         clear();
@@ -90,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(async () => {
+    setSignedOutByUser(true);
     try {
       await api.post("/auth/logout", undefined, { skipAuthRedirect: true });
     } finally {
@@ -102,13 +107,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       status,
       me,
       loadError,
+      signedOutByUser,
       login,
       verifyMfa,
       logout,
       refresh: loadMe,
       can: (permission) => me?.system_permissions.includes(permission) ?? false,
     }),
-    [status, me, loadError, login, verifyMfa, logout, loadMe],
+    [status, me, loadError, signedOutByUser, login, verifyMfa, logout, loadMe],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

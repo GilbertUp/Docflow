@@ -86,7 +86,9 @@ export function Users() {
                   <tr>
                     <th scope="col">Name</th>
                     <th scope="col">Email</th>
-                    <th scope="col">Last sign-in</th>
+                    <th scope="col" className="hide-narrow">
+                      Last sign-in
+                    </th>
                     <th scope="col">
                       <span className="sr-only">Actions</span>
                     </th>
@@ -106,7 +108,7 @@ export function Users() {
                         ) : null}
                       </td>
                       <td>{user.email}</td>
-                      <td>{formatDate(user.last_login_at)}</td>
+                      <td className="hide-narrow">{formatDate(user.last_login_at)}</td>
                       <td className="actions">
                         {manage ? (
                           <ActionMenu label={`Actions for ${user.display_name}`}>

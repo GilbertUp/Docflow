@@ -10,6 +10,7 @@
   --primary-text: #ffffff;
   --primary-soft: #e3edfb;
   --danger: #b3261e;
+  --danger-text: #ffffff;
   --danger-soft: #fbe9e7;
   --success: #17653a;
   --success-soft: #e3f4ea;
@@ -35,6 +36,7 @@
     --primary-text: #0b1220;
     --primary-soft: #1f2f4a;
     --danger: #ff8a80;
+    --danger-text: #2a0b09;
     --danger-soft: #3a1f1d;
     --success: #6fd49b;
     --success-soft: #17301f;
@@ -131,6 +133,7 @@ a {
 }
 
 .topnav a {
+  white-space: nowrap;
   padding: 0.4rem 0.75rem;
   border-radius: var(--radius);
   text-decoration: none;
@@ -155,6 +158,27 @@ a {
   max-width: 1280px;
   width: 100%;
   margin: 0 auto;
+}
+
+/* On a phone the brand and user menu share the first line and the links get a line of their own. */
+@media (max-width: 720px) {
+  .topbar {
+    gap: 0.5rem 1rem;
+  }
+
+  .userbox {
+    margin-left: auto;
+  }
+
+  .topnav {
+    order: 3;
+    flex-basis: 100%;
+  }
+
+  /* Least important table columns give way so the actions stay on screen. */
+  .hide-narrow {
+    display: none;
+  }
 }
 
 /* Files layout */
@@ -386,7 +410,7 @@ td.actions {
 
 .btn-danger {
   background: var(--danger);
-  color: #fff;
+  color: var(--danger-text);
   border-color: var(--danger);
 }
 
