@@ -45,6 +45,8 @@ class Settings(BaseSettings):
     master_key: SecretStr = Field(description="Base64 root key used to derive tenant keys")
     audit_hmac_key: SecretStr = Field(description="Base64 key held outside the database")
 
+    max_upload_bytes: int = Field(default=100 * 1024 * 1024, gt=0)
+
     job_max_attempts: int = 5
     job_heartbeat_timeout_seconds: int = 300
     job_retry_base_seconds: int = 30

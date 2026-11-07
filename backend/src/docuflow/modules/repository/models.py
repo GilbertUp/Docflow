@@ -92,5 +92,14 @@ class Document(IdMixin, TimestampMixin, Base):
     # The nearest anchor: the folder's own, or the document's when it has exceptions.
     acl_anchor_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("acl_anchor.id"))
     size_bytes: Mapped[int] = mapped_column(BigInteger, default=0)
+    # The latest released version. The foreign key is added after both tables exist, because
+    # a version also points back at its document.
+    current_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey(
+            "document_version.id",
+            use_alter=True,
+            name="fk_document_current_version_id_document_version",
+        )
+    )
     row_version: Mapped[int] = mapped_column(Integer, default=1)
     created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))

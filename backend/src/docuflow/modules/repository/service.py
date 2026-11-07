@@ -763,6 +763,15 @@ class RepositoryService:
         )
         return document
 
+    def check_can_file(
+        self, session: Session, principal: Principal, destination: Destination
+    ) -> None:
+        """Raises unless the caller may file a document there. Changes nothing."""
+        tree = self._tree(session, principal)
+        target = self._target(session, tree, destination)
+        self._require(tree, target.anchor_id, "create")
+        self._ensure_writable(session, target)
+
     def get_document(
         self, session: Session, principal: Principal, document_id: uuid.UUID
     ) -> Document:
