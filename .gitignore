@@ -30,3 +30,5 @@ frontend/dist/
 .vscode/
 .DS_Store
 Thumbs.db
+e2e-results/
+playwright-report/
