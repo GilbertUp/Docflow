@@ -128,8 +128,8 @@ export const api = {
     request<T>("PATCH", path, { ...options, body: body ?? undefined }),
   delete: <T>(path: string, options?: RequestOptions) => request<T>("DELETE", path, options),
   /** Uploads a file as the raw request body. The name travels as a query value. */
-  upload: <T>(path: string, file: File) =>
-    request<T>("POST", path, { query: { filename: file.name }, rawBody: file }),
+  upload: <T>(path: string, file: File, query: Record<string, QueryValue> = {}) =>
+    request<T>("POST", path, { query: { ...query, filename: file.name }, rawBody: file }),
 };
 
 export function errorMessage(error: unknown): string {

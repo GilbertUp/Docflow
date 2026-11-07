@@ -21,6 +21,7 @@ import {
   formatDate,
 } from "../../components/ui";
 import { AclDialog } from "./AclDialog";
+import { VersionsDialog } from "./VersionsDialog";
 import {
   DeleteDialog,
   DestinationDialog,
@@ -40,6 +41,7 @@ type DialogState =
   | { kind: "copy"; target: Target }
   | { kind: "delete"; target: Target }
   | { kind: "acl" }
+  | { kind: "versions"; id: string; title: string }
   | null;
 
 interface Container {
@@ -457,6 +459,15 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
                           type="button"
                           className="btn btn-quiet"
                           onClick={() =>
+                            setDialog({ kind: "versions", id: document.id, title: document.title })
+                          }
+                        >
+                          Versions<span className="sr-only"> of {document.title}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-quiet"
+                          onClick={() =>
                             setDialog({
                               kind: "move",
                               target: {
@@ -530,6 +541,15 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
       ) : null}
       {dialog?.kind === "acl" ? (
         <AclDialog anchorId={container.anchorId} title={container.name} onClose={() => setDialog(null)} />
+      ) : null}
+      {dialog?.kind === "versions" ? (
+        <VersionsDialog
+          documentId={dialog.id}
+          title={dialog.title}
+          canAdd={can("version") && !archived}
+          canDownload={can("download")}
+          onClose={() => setDialog(null)}
+        />
       ) : null}
     </div>
   );

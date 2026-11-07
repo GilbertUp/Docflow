@@ -365,7 +365,7 @@ export interface paths {
         };
         /**
          * Download
-         * @description The original bytes, as an attachment. Needs the download permission and is audited.
+         * @description The current original, as an attachment. Needs the download permission and is audited.
          */
         get: operations["download_api_v1_documents__document_id__download_get"];
         put?: never;
@@ -402,6 +402,30 @@ export interface paths {
         };
         /** List Versions */
         get: operations["list_versions_api_v1_documents__document_id__versions_get"];
+        put?: never;
+        /**
+         * Add Version
+         * @description Adds a new version. The body is the file; earlier versions stay downloadable.
+         */
+        post: operations["add_version_api_v1_documents__document_id__versions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{document_id}/versions/{number}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Version
+         * @description An earlier original, with the same permission and audit as the current one.
+         */
+        get: operations["download_version_api_v1_documents__document_id__versions__number__download_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1429,6 +1453,8 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Mime */
+            mime: string;
             /** Number */
             number: number;
             /** Original Filename */
@@ -1437,8 +1463,17 @@ export interface components {
             reason: string;
             /** Scan Engine */
             scan_engine: string;
+            /** Size Bytes */
+            size_bytes: number;
             /** State */
             state: string;
+        };
+        /** VersionResult */
+        VersionResult: {
+            document: components["schemas"]["DocumentOut"];
+            /** Duplicate */
+            duplicate: boolean;
+            version: components["schemas"]["VersionOut"];
         };
     };
     responses: never;
@@ -2319,6 +2354,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VersionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_version_api_v1_documents__document_id__versions_post: {
+        parameters: {
+            query: {
+                filename: string;
+                reason?: string;
+            };
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_version_api_v1_documents__document_id__versions__number__download_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+                number: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
