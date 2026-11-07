@@ -24,4 +24,14 @@ while [ "$attempt" -lt 24 ]; do
 done
 
 echo "checkpoint job did not complete: $result"
+echo "--- jobs"
+$compose exec -T postgres psql -U postgres -d docuflow -c   "SELECT type, status, attempts, left(last_error, 300) AS error FROM processing_job"
+echo "--- outbox"
+$compose exec -T postgres psql -U postgres -d docuflow -c   "SELECT topic, published_at IS NOT NULL AS published, count(*) FROM outbox GROUP BY 1, 2"
+echo "--- services"
+$compose ps --all
+for service in scheduler dispatcher worker; do
+  echo "--- $service log"
+  $compose logs --no-log-prefix --tail=25 "$service"
+done
 exit 1

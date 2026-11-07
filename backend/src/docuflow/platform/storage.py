@@ -58,6 +58,9 @@ class S3ObjectStore:
             aws_secret_access_key=secret_key,
             config=Config(
                 signature_version="s3v4",
+                # Default trailing checksums are not universal outside AWS.
+                request_checksum_calculation="when_required",
+                response_checksum_validation="when_required",
                 s3={"addressing_style": "path"},
                 retries={"max_attempts": 5, "mode": "standard"},
                 connect_timeout=5,
