@@ -19,3 +19,4 @@ All records were **accepted** on 2026-11-06, when the owner accepted the plan de
 | [0013](0013-ai-assistant-and-providers.md) | Provider adapters, RAG, extract-only fallback | External AI off by default |
 | [0014](0014-compression-engine.md) | Page-level compression with evaluated derivatives | None needed |
 | [0015](0015-retention-disposal-and-immutability.md) | Retention, legal hold and destruction rules | None needed |
+| [0016](0016-folder-hierarchy-and-anchors.md) | Folder hierarchy mirrored by the permission anchors | None needed |

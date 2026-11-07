@@ -20,6 +20,7 @@ from alembic.config import Config
 from sqlalchemy import Engine, create_engine, make_url
 
 from docuflow.platform.audit import AuditLog
+from docuflow.platform.crypto import LocalKeyProvider
 from docuflow.platform.db import Database
 from docuflow.platform.models import Tenant
 
@@ -147,3 +148,8 @@ def tenant(db: Database) -> uuid.UUID:
 @pytest.fixture
 def other_tenant(db: Database) -> uuid.UUID:
     return _make_tenant(db)
+
+
+@pytest.fixture(scope="session")
+def keys() -> LocalKeyProvider:
+    return LocalKeyProvider(os.urandom(32))

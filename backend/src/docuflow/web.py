@@ -18,6 +18,8 @@ from docuflow.modules.identity.api import (
 )
 from docuflow.modules.identity.auth import Principal
 from docuflow.modules.identity.security import RedisRateLimiter
+from docuflow.modules.repository.api import router as repository_router
+from docuflow.modules.repository.service import RepositoryService
 from docuflow.platform import context
 from docuflow.platform.audit import AuditActor
 from docuflow.platform.bootstrap import Services
@@ -62,7 +64,9 @@ def _record_denial(ctx: ApiContext, principal: Principal, request: Request, exc:
 def install(app: FastAPI, services: Services) -> ApiContext:
     ctx = build_context(services, RedisRateLimiter(services.redis))
     app.state.api = ctx
+    app.state.repo = RepositoryService(services.audit, ctx.policy)
     app.include_router(router)
+    app.include_router(repository_router)
 
     @app.exception_handler(DomainError)
     async def domain_error(request: Request, exc: DomainError) -> JSONResponse:

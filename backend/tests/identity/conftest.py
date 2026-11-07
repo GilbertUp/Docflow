@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from typing import Any
 
 import pytest
@@ -21,11 +20,6 @@ class OpenLimiter:
 class DenyLimiter:
     def allow(self, key: str, limit: int, window_seconds: int) -> bool:
         return False
-
-
-@pytest.fixture(scope="session")
-def keys() -> LocalKeyProvider:
-    return LocalKeyProvider(os.urandom(32))
 
 
 @pytest.fixture

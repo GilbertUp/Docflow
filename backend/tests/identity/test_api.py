@@ -6,15 +6,12 @@ import json
 import re
 import time
 import uuid
-from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pyotp
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from docuflow.main import create_app
 from docuflow.modules.identity.api import PUBLIC_ROUTES
 from docuflow.platform.audit import AuditLog
 from docuflow.platform.crypto import LocalKeyProvider
@@ -32,52 +29,15 @@ from tests.identity.support import (
     new_user,
     tenant_slug,
 )
+from tests.web_support import make_app, sign_in
 
 pytestmark = pytest.mark.db
 API = "/api/v1"
 
 
-class FakeRedis:
-    def __init__(self) -> None:
-        self.counts: dict[str, int] = {}
-
-    def incr(self, name: str) -> int:
-        self.counts[name] = self.counts.get(name, 0) + 1
-        return self.counts[name]
-
-    def expire(self, name: str, seconds: int) -> bool:
-        return True
-
-    def ping(self) -> bool:
-        return True
-
-    def exists(self, key: str) -> int:
-        return 1
-
-
 @pytest.fixture
 def app(db: Database, audit: AuditLog, keys: LocalKeyProvider) -> FastAPI:
-    services = SimpleNamespace(
-        settings=SimpleNamespace(log_level="WARNING", environment="test"),
-        db=db,
-        audit=audit,
-        keys=keys,
-        redis=FakeRedis(),
-        store=MagicMock(),
-    )
-    return create_app(services)  # type: ignore[arg-type]
-
-
-def sign_in(
-    app: FastAPI, db: Database, tenant: uuid.UUID, name: str, password: str = STRONG
-) -> tuple[TestClient, dict[str, str]]:
-    client = TestClient(app)
-    response = client.post(
-        f"{API}/auth/login",
-        json={"organization": tenant_slug(db, tenant), "email": email(name), "password": password},
-    )
-    assert response.status_code == 200, response.text
-    return client, {"X-CSRF-Token": response.json()["csrf_token"] or ""}
+    return make_app(db, audit, keys)
 
 
 def anonymous_failures(app: FastAPI) -> tuple[list[tuple[str, str, int]], int]:

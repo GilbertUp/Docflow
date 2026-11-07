@@ -113,7 +113,7 @@ erDiagram
 |---|---|---|
 | `cabinet` | HR, Finance, Legal and so on | `name`, `description`, `status`, `retention_policy_id`, `acl_anchor_id` |
 | `cabinet_document_type` | Allowed types | `cabinet_id`, `document_type_id` |
-| `folder` | Nested folders | `cabinet_id`, `parent_id`, `name`, `path` (`ltree`), `status`, `acl_anchor_id`, `row_version` |
+| `folder` | Nested folders (see [ADR 0016](../adr/0016-folder-hierarchy-and-anchors.md)) | `cabinet_id`, `parent_id`, `name`, `depth`, `status`, `acl_anchor_id`, `row_version` |
 | `filing_rule` | Automatic routing | `condition`, `target_folder_template`, `priority` |
 | `tag`, `document_tag` | Labels | `name`; `document_id`, `tag_id` |
 
