@@ -5,8 +5,9 @@ the throwaway database, and loses uploaded objects on exit. Production uses the 
 
     python backend/scripts/dev_server.py --seed
 
-Data lives in ./.data/dev (ignored by Git). With --seed it creates a demo organization with
-Finance and HR cabinets, and writes the generated sign-in details to .data/dev/credentials.txt.
+Data lives in ./.data/dev by default (ignored by Git). With --seed it creates a demo
+organization with Finance and HR cabinets, and writes the generated sign-in details to
+credentials.txt in the data folder.
 """
 
 from __future__ import annotations
@@ -14,7 +15,10 @@ from __future__ import annotations
 import argparse
 import json
 import secrets
+import shutil
+import subprocess
 import sys
+import time
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -60,13 +64,19 @@ class InMemoryRedis:
     """Just enough Redis for rate limiting and health checks."""
 
     def __init__(self) -> None:
-        self._counts: dict[str, int] = {}
+        # name -> (count, moment the window ends)
+        self._counts: dict[str, tuple[int, float]] = {}
 
     def incr(self, name: str) -> int:
-        self._counts[name] = self._counts.get(name, 0) + 1
-        return self._counts[name]
+        count, ends = self._counts.get(name, (0, float("inf")))
+        if time.monotonic() >= ends:
+            count, ends = 0, float("inf")
+        self._counts[name] = (count + 1, ends)
+        return count + 1
 
     def expire(self, name: str, seconds: int) -> bool:
+        count, _ = self._counts.get(name, (0, 0.0))
+        self._counts[name] = (count, time.monotonic() + seconds)
         return True
 
     def ping(self) -> bool:
@@ -74,6 +84,24 @@ class InMemoryRedis:
 
     def exists(self, key: str) -> int:
         return 1
+
+
+def stop_stale_database() -> None:
+    """Stop a database left running by a previous run that was killed, so its files can go.
+
+    A process that is terminated on Windows cannot shut its database down, and the leftover
+    server keeps the data folder locked.
+    """
+    import pgserver
+
+    data = DATA / "pg"
+    if not (data / "postmaster.pid").exists():
+        return
+    binary = Path(pgserver.__file__).parent / "pginstall" / "bin"
+    tool = binary / ("pg_ctl.exe" if sys.platform == "win32" else "pg_ctl")
+    subprocess.run(  # noqa: S603
+        [str(tool), "-D", str(data), "stop", "-m", "fast"], check=False, capture_output=True
+    )
 
 
 def start_database() -> dict[str, str]:
@@ -150,7 +178,7 @@ def build_services(urls: dict[str, str]) -> SimpleNamespace:
     )
 
 
-def seed(services: SimpleNamespace) -> None:
+def seed(services: SimpleNamespace, fixed_password: str | None = None) -> None:
     db: Database = services.db
     with db.platform_session() as session:
         if session.scalar(select(Tenant.id).where(Tenant.slug == SLUG)):
@@ -165,7 +193,7 @@ def seed(services: SimpleNamespace) -> None:
     credentials: list[tuple[str, str]] = []
 
     def new_user(session: Any, name: str) -> User:
-        password = secrets.token_urlsafe(12) + "-A1"
+        password = fixed_password or secrets.token_urlsafe(12) + "-A1"
         user = User(
             tenant_id=tenant_id,
             email=f"{name.lower()}@example.com",
@@ -260,12 +288,29 @@ def main() -> int:
     )
     parser.add_argument("--seed", action="store_true", help="create the demo organization once")
     parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--data-dir", default=None, help="where to keep data (default .data/dev)")
+    parser.add_argument("--fresh", action="store_true", help="delete the data folder first")
+    parser.add_argument(
+        "--password",
+        default=None,
+        help="use one known password for every seeded user, for automated tests only",
+    )
     args = parser.parse_args()
+
+    global DATA
+    if args.data_dir:
+        DATA = Path(args.data_dir).resolve()
+    if args.fresh and DATA.exists():
+        # Refuse to delete anything outside the repository's ignored data folder.
+        if (ROOT / ".data").resolve() not in DATA.parents:
+            parser.error("--fresh only works inside the repository's .data folder")
+        stop_stale_database()
+        shutil.rmtree(DATA)
 
     urls = start_database()
     services = build_services(urls)
     if args.seed:
-        seed(services)
+        seed(services, args.password)
     app = create_app(services)  # type: ignore[arg-type]
     print(f"API on http://127.0.0.1:{args.port}  (docs at /api/v1/docs)")
     uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="warning")
