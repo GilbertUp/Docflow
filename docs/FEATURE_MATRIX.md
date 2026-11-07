@@ -10,7 +10,7 @@ A feature is **Done** only when all ten criteria from the guide pass: model, mig
 |---|---|---|---|---|---|
 | M0 | Foundation (not a spec feature) | M0 | Done | | [Gate report](reports/m0-gate.md), CI run #6 |
 | F01 | Identity, organizations and permissions | M1 | In progress | OIDC adapter, web interface, E2E demo | Service, API and 93 identity tests pass locally; CI result for this branch not yet seen |
-| F02 | Cabinets and folders | M1 | In progress | Web interface; upload (F03) for the acceptance demo; retention (F15); auto-routing (F07, F11); document copy (F03) | Service, API and 55 tests pass locally; CI result for this branch not yet seen |
+| F02 | Cabinets and folders | M1 | In progress | Web interface; upload (F03) for the acceptance demo; retention (F15); auto-routing (F07, F11); document copy (F03) | Service, API and 52 tests pass locally (256 across the whole suite); CI result for this branch not yet seen |
 | F03 | Document ingestion | M2 | Not started | Email ingestion (F20) | |
 | F04 | OCR and text extraction | M2 | Not started | | |
 | F05 | Automatic preview | M2 | Not started | Audit timeline (F16) | |
