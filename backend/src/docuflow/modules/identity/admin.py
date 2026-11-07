@@ -80,14 +80,12 @@ class IdentityAdmin:
     def require_system(self, session: Session, principal: Principal, permission: str) -> None:
         held = self._policy.system_permissions(session, principal.tenant_id, principal.user_id)
         if permission not in held:
-            self._record(
-                session,
-                principal,
-                "access.denied",
-                "system_permission",
-                permission,
+            # Not audited here: this transaction rolls back when the error propagates, which
+            # would discard the event. The API layer records denials in a fresh transaction.
+            raise Forbidden(
+                "You do not have permission to do that.",
+                details={"required": permission},
             )
-            raise Forbidden("You do not have permission to do that.")
 
     def _get[T](self, session: Session, model: type[T], item_id: uuid.UUID, label: str) -> T:
         # The tenant session means another tenant's id simply is not found.
@@ -288,6 +286,7 @@ class IdentityAdmin:
         permissions: list[str],
     ) -> Role:
         self._validate_system_permissions(permissions)
+        self._forbid_permission_escalation(session, principal, set(permissions))
         role = Role(tenant_id=principal.tenant_id, name=name, description=description)
         session.add(role)
         self._flush_unique(session, "A role with that name already exists.")
@@ -309,6 +308,7 @@ class IdentityAdmin:
             session.scalars(select(RolePermission).where(RolePermission.role_id == role_id))
         )
         before = sorted(item.permission for item in current)
+        self._forbid_permission_escalation(session, principal, set(permissions) - set(before))
         for item in current:
             session.delete(item)
         session.flush()
@@ -333,18 +333,23 @@ class IdentityAdmin:
         if unknown:
             raise DomainError(f"Unknown permissions: {', '.join(sorted(unknown))}.")
 
-    def _forbid_role_escalation(
-        self, session: Session, principal: Principal, role_id: uuid.UUID
+    def _forbid_permission_escalation(
+        self, session: Session, principal: Principal, wanted: set[str]
     ) -> None:
         """Nobody can hand out a permission they do not hold themselves."""
         held = self._policy.system_permissions(session, principal.tenant_id, principal.user_id)
+        if wanted - held:
+            raise Forbidden("You cannot grant access that you do not hold yourself.")
+
+    def _forbid_role_escalation(
+        self, session: Session, principal: Principal, role_id: uuid.UUID
+    ) -> None:
         granted = set(
             session.scalars(
                 select(RolePermission.permission).where(RolePermission.role_id == role_id)
             )
         )
-        if granted - held:
-            raise Forbidden("You cannot assign a role with more access than your own.")
+        self._forbid_permission_escalation(session, principal, granted)
 
     def assign_role(
         self,

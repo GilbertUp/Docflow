@@ -7,9 +7,12 @@ class DomainError(Exception):
     status = 400
     code = "invalid_request"
 
-    def __init__(self, message: str, code: str | None = None) -> None:
+    def __init__(
+        self, message: str, code: str | None = None, details: dict[str, object] | None = None
+    ) -> None:
         super().__init__(message)
         self.message = message
+        self.details = details or {}
         if code:
             self.code = code
 
