@@ -73,4 +73,5 @@ export const SYSTEM_PERMISSIONS = [
   ["cabinets.manage", "Create and change cabinets"],
   ["audit.read", "Read and export the audit trail"],
   ["integrations.manage", "Manage API keys and identity providers"],
+  ["document_types.manage", "Create document types and change their fields"],
 ] as const;

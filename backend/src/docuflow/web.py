@@ -20,12 +20,14 @@ from docuflow.modules.identity.api import (
 )
 from docuflow.modules.identity.auth import Principal
 from docuflow.modules.identity.security import RedisRateLimiter
+from docuflow.modules.indexing.api import router as indexing_router
+from docuflow.modules.indexing.service import IndexingService
 from docuflow.modules.repository.api import router as repository_router
 from docuflow.modules.repository.service import RepositoryService
 from docuflow.platform import context
 from docuflow.platform.audit import AuditActor
 from docuflow.platform.bootstrap import Services
-from docuflow.platform.errors import DomainError, Forbidden, RateLimited
+from docuflow.platform.errors import DomainError, Forbidden, RateLimited, ValidationFailed
 
 log = structlog.get_logger("docuflow.web")
 MAX_PATH_IN_OBJECT_ID = 64
@@ -69,9 +71,11 @@ def install(app: FastAPI, services: Services) -> ApiContext:
     app.state.repo = RepositoryService(services.audit, ctx.policy)
     built = build_documents(services, app.state.repo, ctx.policy)
     app.state.documents, app.state.imports, app.state.text = built.docs, built.imports, built.text
+    app.state.indexing = IndexingService(services.audit, ctx.policy, app.state.repo)
     app.include_router(router)
     app.include_router(repository_router)
     app.include_router(documents_router)
+    app.include_router(indexing_router)
 
     @app.exception_handler(DomainError)
     async def domain_error(request: Request, exc: DomainError) -> JSONResponse:
@@ -83,8 +87,11 @@ def install(app: FastAPI, services: Services) -> ApiContext:
                 # The caller still gets the refusal, and the failure is visible to operators.
                 log.exception("denial_audit_failed")
         headers = {"Retry-After": "60"} if isinstance(exc, RateLimited) else None
+        extra = {"fields": exc.fields} if isinstance(exc, ValidationFailed) else {}
         return JSONResponse(
-            status_code=exc.status, content=_body(exc.code, exc.message), headers=headers
+            status_code=exc.status,
+            content=_body(exc.code, exc.message, **extra),
+            headers=headers,
         )
 
     @app.exception_handler(RequestValidationError)

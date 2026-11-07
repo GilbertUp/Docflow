@@ -44,6 +44,7 @@ class DocumentOut(Orm):
     title: str
     status: str
     acl_anchor_id: uuid.UUID
+    document_type_id: uuid.UUID | None = None
     size_bytes: int
     row_version: int
     created_at: datetime
