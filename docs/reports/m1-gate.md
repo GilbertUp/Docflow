@@ -32,5 +32,4 @@ Journeys cover onboarding and disabling a user, two-step sign-in with a recovery
 
 - **OIDC single sign-on adapter** (F01) is not built.
 - **Upload, retention, auto-routing and document copy** wait for F03, F15, F07 and F11.
-- **Readiness ignores workers.** Carried over from the M0 gate; no fix found in the code.
 - **Local Docker is still blocked** on the owner's laptop (see the M0 report).
