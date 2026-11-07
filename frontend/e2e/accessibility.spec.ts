@@ -54,7 +54,7 @@ for (const scheme of ["light", "dark"] as const) {
       await page.getByRole("link", { name: "Supplier Invoices" }).click();
       await page.getByRole("link", { name: "2026" }).click();
       await page.getByRole("link", { name: "November" }).click();
-      await expect(page.getByText("Invoice ABC-1042.pdf")).toBeVisible();
+      await expect(page.getByRole("cell", { name: "Invoice ABC-1042.pdf", exact: true })).toBeVisible();
       await scan(page, "folder with documents");
     });
 
