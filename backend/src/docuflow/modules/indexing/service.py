@@ -14,6 +14,7 @@ Rules that hold throughout:
 
 from __future__ import annotations
 
+import json
 import re
 import uuid
 from dataclasses import dataclass, field
@@ -61,6 +62,9 @@ ALLOWED_RULES = {
     "choice": set(),
 }
 AUDIT_VALUE_LIMIT = 200
+MAX_LABELS = 10
+MAX_LABEL = 60
+MAX_KEYWORDS = 20
 
 
 @dataclass(frozen=True)
@@ -79,6 +83,7 @@ class FieldInput:
     default_value: str | None = None
     validation: dict[str, Any] = field(default_factory=dict)
     choices: tuple[ChoiceInput, ...] = ()
+    extraction: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -219,11 +224,68 @@ def check_definition(item: FieldInput) -> None:
                 raise ValueError("Every choice needs a value (up to 120 characters) and a label.")
     elif item.choices:
         raise ValueError("Only a choice field has choices.")
+    check_extraction(item.extraction)
     if item.default_value not in (None, ""):
         try:
             coerce(_view_of(item), item.default_value)
         except ValueError as exc:
             raise ValueError(f"The default value is not valid: {exc}") from exc
+
+
+def check_pattern(pattern: Any) -> None:
+    """Raises ValueError unless the pattern is safe and valid. Used for rules and for fields."""
+    if not isinstance(pattern, str) or not pattern or len(pattern) > MAX_PATTERN:
+        raise ValueError(f"A pattern must be 1 to {MAX_PATTERN} characters.")
+    if NESTED_REPEAT.search(pattern):
+        raise ValueError("That pattern repeats a repeat, which can hang. Simplify it.")
+    try:
+        re.compile(pattern)
+    except re.error as exc:
+        raise ValueError(f"The pattern is not valid: {exc}.") from exc
+
+
+def check_extraction(rules: dict[str, Any]) -> None:
+    """Raises ValueError about the rules that tell the finder where a field's value is."""
+    unknown = set(rules) - {"labels", "pattern"}
+    if unknown:
+        raise ValueError(
+            f"Extraction rules can only be labels and a pattern, not {sorted(unknown)}."
+        )
+    labels = rules.get("labels", [])
+    if not isinstance(labels, list) or len(labels) > MAX_LABELS:
+        raise ValueError(f"Give at most {MAX_LABELS} labels as a list.")
+    for label in labels:
+        if not isinstance(label, str) or not label.strip() or len(label) > MAX_LABEL:
+            raise ValueError(f"Each label must be 1 to {MAX_LABEL} characters.")
+    if "pattern" in rules:
+        check_pattern(rules["pattern"])
+
+
+def check_keywords(keywords: list[str]) -> list[str]:
+    cleaned = [word.strip() for word in keywords if word.strip()]
+    if len(cleaned) > MAX_KEYWORDS or any(len(word) > MAX_LABEL for word in cleaned):
+        raise DomainError(
+            f"Give at most {MAX_KEYWORDS} keywords of up to {MAX_LABEL} characters each."
+        )
+    return list(dict.fromkeys(cleaned))
+
+
+def check_thresholds(auto_accept: float, review: float) -> None:
+    if not 0 < review <= auto_accept <= 1:
+        raise DomainError(
+            "The review level must be above 0 and no higher than the fill-in-at-once level, "
+            "which must be 1 or less."
+        )
+
+
+def value_text(kind: str, value: Any) -> str | None:
+    """A value as plain text, the form suggestions are stored and compared in."""
+    if value is None:
+        return None
+    if kind == "boolean":
+        return "yes" if value else "no"
+    rendered = render_value(kind, value)
+    return rendered if isinstance(rendered, str) else str(rendered)
 
 
 def _view_of(item: FieldInput) -> FieldView:
@@ -236,6 +298,7 @@ def _view_of(item: FieldInput) -> FieldView:
         read_only=item.read_only,
         validation=item.validation,
         default_value=item.default_value or None,
+        extraction=item.extraction,
     )
     return FieldView(
         stored,
@@ -445,6 +508,7 @@ class IndexingService:
                 read_only=item.read_only,
                 validation=dict(item.validation),
                 default_value=item.default_value or None,
+                extraction=dict(item.extraction),
             )
             session.add(stored)
             session.flush()
@@ -475,6 +539,7 @@ class IndexingService:
                 sorted(view.field.validation.items()),
                 view.field.default_value or None,
                 [(choice.value, choice.label) for choice in view.choices],
+                json.dumps(view.field.extraction or {}, sort_keys=True),
             )
             for view in views
         ]
@@ -500,16 +565,23 @@ class IndexingService:
         name: str,
         description: str,
         inputs: list[FieldInput],
+        keywords: list[str] | None = None,
+        auto_accept_threshold: float = 0.9,
+        review_threshold: float = 0.6,
     ) -> TypeView:
         self._require_manage(session, principal)
         name = name.strip()
         if not name or len(name) > 120:
             raise DomainError("Names must be between 1 and 120 characters.")
         self._check_fields(inputs)
+        check_thresholds(auto_accept_threshold, review_threshold)
         row = DocumentType(
             tenant_id=principal.tenant_id,
             name=name,
             description=description.strip()[:1000],
+            keywords=check_keywords(keywords or []),
+            auto_accept_threshold=auto_accept_threshold,
+            review_threshold=review_threshold,
             created_by=principal.user_id,
         )
         session.add(row)
@@ -580,6 +652,9 @@ class IndexingService:
         name: str | None = None,
         description: str | None = None,
         status: str | None = None,
+        keywords: list[str] | None = None,
+        auto_accept_threshold: float | None = None,
+        review_threshold: float | None = None,
     ) -> TypeView:
         self._require_manage(session, principal)
         row = session.scalar(
@@ -604,6 +679,17 @@ class IndexingService:
                 raise DomainError("The status must be active or archived.")
             changes["status"] = [row.status, status]
             row.status = status
+        if keywords is not None:
+            cleaned = check_keywords(keywords)
+            if cleaned != list(row.keywords or []):
+                changes["keywords"] = cleaned
+                row.keywords = cleaned
+        auto = row.auto_accept_threshold if auto_accept_threshold is None else auto_accept_threshold
+        review = row.review_threshold if review_threshold is None else review_threshold
+        if (auto, review) != (row.auto_accept_threshold, row.review_threshold):
+            check_thresholds(auto, review)
+            changes["thresholds"] = [auto, review]
+            row.auto_accept_threshold, row.review_threshold = auto, review
         if changes:
             row.row_version += 1
             try:
@@ -772,6 +858,18 @@ class IndexingService:
             if before != after:
                 kind = view.field.data_type
                 changes[key] = [_short(before, kind), _short(after, kind)]
+        from docuflow.modules.indexing.suggest import settle_suggestions
+
+        settle_suggestions(
+            session,
+            self._audit,
+            principal,
+            document,
+            {
+                view.field.key: value_text(view.field.data_type, typed.get(view.field.key))
+                for view in views
+            },
+        )
         version = session.get(IndexSchemaVersion, row.current_schema_version_id)
         self._record(
             session,

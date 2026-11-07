@@ -14,6 +14,8 @@ from redis.exceptions import RedisError
 from docuflow.modules.documents.extraction import JOB_TYPE as EXTRACT_JOB
 from docuflow.modules.documents.wiring import build_documents
 from docuflow.modules.identity.policy import PolicyService
+from docuflow.modules.indexing.suggest import JOB_TYPE as FIELDS_JOB
+from docuflow.modules.indexing.suggest import SuggestionService
 from docuflow.modules.repository.service import RepositoryService
 from docuflow.platform.bootstrap import get_services
 from docuflow.platform.jobs import (
@@ -51,6 +53,14 @@ def documents_extract_text(job: JobContext) -> None:
     policy = PolicyService()
     repo = RepositoryService(services.audit, policy)
     build_documents(services, repo, policy).text.run(services.db, job)
+
+
+@registry.register(FIELDS_JOB)
+def indexing_extract_fields(job: JobContext) -> None:
+    services = get_services()
+    policy = PolicyService()
+    repo = RepositoryService(services.audit, policy)
+    SuggestionService(services.audit, policy, repo).run(services.db, job)
 
 
 def make_celery(broker_url: str) -> Celery:

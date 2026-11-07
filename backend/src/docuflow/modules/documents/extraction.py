@@ -47,6 +47,8 @@ from docuflow.platform.storage import EncryptedObjects
 log = structlog.get_logger("docuflow.extraction")
 
 JOB_TYPE = "documents.extract_text"
+# Job type of the indexing module, named here so reading text never imports indexing.
+FIELDS_JOB_TYPE = "indexing.extract_fields"
 IMAGE_TYPES = {"image/png", "image/jpeg", "image/tiff", "image/gif", "image/webp"}
 TEXT_TYPES = {"text/plain", "text/csv"}
 SUPPORTED_TYPES = {"application/pdf", *IMAGE_TYPES, *TEXT_TYPES}
@@ -584,6 +586,15 @@ class ExtractionService:
             assert version is not None
             version.text_state = "failed" if error else "done"
             version.text_error = error
+            if not error:
+                enqueue(
+                    session,
+                    tenant_id,
+                    FIELDS_JOB_TYPE,
+                    f"fields:{version_id}:{uuid.uuid4().hex}",
+                    queue="index",
+                    payload={"version_id": str(version_id)},
+                )
             self._audit.record(
                 session,
                 tenant_id,

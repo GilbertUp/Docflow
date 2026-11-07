@@ -10,12 +10,16 @@ from fastapi import APIRouter, Depends, Query, Request
 from docuflow.modules.identity.api import Ctx, User_
 from docuflow.modules.indexing.schemas import (
     ChoiceModel,
+    ClassificationOut,
     CreateTypeRequest,
     FieldModel,
     IndexFieldOut,
     IndexOut,
     NewVersionRequest,
+    RunOut,
     SetIndexRequest,
+    SuggestedFieldOut,
+    SuggestionsOut,
     TypeOut,
     UpdateTypeRequest,
 )
@@ -28,6 +32,7 @@ from docuflow.modules.indexing.service import (
     TypeView,
     render_value,
 )
+from docuflow.modules.indexing.suggest import SuggestionService, SuggestionView
 from docuflow.platform.errors import Conflict
 
 router = APIRouter(prefix="/api/v1", tags=["indexing"])
@@ -41,6 +46,14 @@ def get_indexing(request: Request) -> IndexingService:
 Indexing = Annotated[IndexingService, Depends(get_indexing)]
 
 
+def get_suggestions(request: Request) -> SuggestionService:
+    service: SuggestionService = request.app.state.suggestions
+    return service
+
+
+Suggestions = Annotated[SuggestionService, Depends(get_suggestions)]
+
+
 def _inputs(fields: list[FieldModel]) -> list[FieldInput]:
     return [
         FieldInput(
@@ -52,6 +65,7 @@ def _inputs(fields: list[FieldModel]) -> list[FieldInput]:
             default_value=item.default_value,
             validation=item.validation,
             choices=tuple(ChoiceInput(c.value, c.label) for c in item.choices),
+            extraction=item.extraction,
         )
         for item in fields
     ]
@@ -68,6 +82,7 @@ def _field(view: FieldView) -> FieldModel:
         default_value=stored.default_value,
         validation=dict(stored.validation),
         choices=[ChoiceModel(value=c.value, label=c.label) for c in view.choices],
+        extraction=dict(stored.extraction or {}),
     )
 
 
@@ -81,6 +96,9 @@ def _type(view: TypeView) -> TypeOut:
         row_version=row.row_version,
         version=view.version.version if view.version else None,
         fields=[_field(item) for item in view.fields],
+        keywords=list(row.keywords or []),
+        auto_accept_threshold=row.auto_accept_threshold,
+        review_threshold=row.review_threshold,
     )
 
 
@@ -117,7 +135,16 @@ def list_types(
 def create_type(body: CreateTypeRequest, ctx: Ctx, indexing: Indexing, who: User_) -> TypeOut:
     with ctx.services.db.tenant_session(who.tenant_id) as session:
         return _type(
-            indexing.create_type(session, who, body.name, body.description, _inputs(body.fields))
+            indexing.create_type(
+                session,
+                who,
+                body.name,
+                body.description,
+                _inputs(body.fields),
+                keywords=body.keywords,
+                auto_accept_threshold=body.auto_accept_threshold,
+                review_threshold=body.review_threshold,
+            )
         )
 
 
@@ -152,6 +179,9 @@ def update_type(
                 name=body.name,
                 description=body.description,
                 status=body.status,
+                keywords=body.keywords,
+                auto_accept_threshold=body.auto_accept_threshold,
+                review_threshold=body.review_threshold,
             )
         )
 
@@ -176,3 +206,40 @@ def set_index(
         return _index(
             indexing.set_index(session, who, document_id, body.document_type_id, body.values)
         )
+
+
+def _suggestions(view: SuggestionView) -> SuggestionsOut:
+    info = view.classification
+    return SuggestionsOut(
+        version_number=view.version_number,
+        text_state=view.text_state,
+        classification=(
+            ClassificationOut(
+                type_id=info.type_id,
+                type_name=info.type_name,
+                confidence=info.confidence,
+                band=info.band,
+                applied=info.applied,
+            )
+            if info
+            else None
+        ),
+        fields=[SuggestedFieldOut(**vars(item)) for item in view.fields],
+    )
+
+
+@router.get("/documents/{document_id}/suggestions")
+def get_suggestions_for(
+    document_id: uuid.UUID, ctx: Ctx, suggestions: Suggestions, who: User_
+) -> SuggestionsOut:
+    """The type and values proposed from the document's text, with where each was found."""
+    with ctx.services.db.tenant_session(who.tenant_id) as session:
+        return _suggestions(suggestions.get(session, who, document_id))
+
+
+@router.post("/documents/{document_id}/suggestions/run", status_code=202)
+def run_suggestions(
+    document_id: uuid.UUID, ctx: Ctx, suggestions: Suggestions, who: User_
+) -> RunOut:
+    """Proposes again from the current text. The result appears on the suggestions."""
+    return RunOut(version_number=suggestions.request_run(ctx.services.db, who, document_id))

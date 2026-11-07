@@ -22,6 +22,7 @@ from docuflow.modules.identity.auth import Principal
 from docuflow.modules.identity.security import RedisRateLimiter
 from docuflow.modules.indexing.api import router as indexing_router
 from docuflow.modules.indexing.service import IndexingService
+from docuflow.modules.indexing.suggest import SuggestionService
 from docuflow.modules.repository.api import router as repository_router
 from docuflow.modules.repository.service import RepositoryService
 from docuflow.platform import context
@@ -72,6 +73,7 @@ def install(app: FastAPI, services: Services) -> ApiContext:
     built = build_documents(services, app.state.repo, ctx.policy)
     app.state.documents, app.state.imports, app.state.text = built.docs, built.imports, built.text
     app.state.indexing = IndexingService(services.audit, ctx.policy, app.state.repo)
+    app.state.suggestions = SuggestionService(services.audit, ctx.policy, app.state.repo)
     app.include_router(router)
     app.include_router(repository_router)
     app.include_router(documents_router)

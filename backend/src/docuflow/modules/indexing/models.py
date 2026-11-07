@@ -15,6 +15,7 @@ from sqlalchemy import (
     CheckConstraint,
     Date,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -43,6 +44,12 @@ class DocumentType(IdMixin, TimestampMixin, Base):
     name: Mapped[str] = mapped_column(String(120))
     description: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String(20), default="active")
+    # Words that suggest a document is of this type, used to propose a type (F07).
+    keywords: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    # At or above the first, a suggested value is filled in at once. Below the second, it is
+    # still shown but marked as a weak guess. Between the two it waits for a person.
+    auto_accept_threshold: Mapped[float] = mapped_column(Float, default=0.9)
+    review_threshold: Mapped[float] = mapped_column(Float, default=0.6)
     # The schema version given to documents typed from now on. Set when a version is published.
     current_schema_version_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey(
@@ -88,6 +95,8 @@ class IndexField(IdMixin, TimestampMixin, Base):
     # pattern, min_length, max_length for text; min, max for numbers and dates.
     validation: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
     default_value: Mapped[str | None] = mapped_column(String(500))
+    # How to find a value in the text: {"labels": ["Invoice no"], "pattern": "..."} (F07).
+    extraction: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
 
 
 class FieldChoice(IdMixin, TimestampMixin, Base):
@@ -119,3 +128,58 @@ class IndexValue(IdMixin, TimestampMixin, Base):
     value_bool: Mapped[bool | None] = mapped_column(Boolean)
     validated_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ClassificationResult(IdMixin, TimestampMixin, Base):
+    """The type proposed for a version, with how sure the method was."""
+
+    __tablename__ = "classification_result"
+    __table_args__ = (UniqueConstraint("version_id", name="uq_classification_version"),)
+
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"))
+    version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("document_version.id"))
+    document_type_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("document_type.id"))
+    method: Mapped[str] = mapped_column(String(30))
+    confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    # Every type that scored, best first: [{"type_id": ..., "name": ..., "score": ...}].
+    scores: Mapped[list[dict[str, object]]] = mapped_column(JSONB, default=list)
+
+
+class ExtractedField(IdMixin, TimestampMixin, Base):
+    """The best value found for one field of one version, and exactly where it came from."""
+
+    __tablename__ = "extracted_field"
+    __table_args__ = (
+        UniqueConstraint("version_id", "field_id", name="uq_extracted_field"),
+        CheckConstraint("validation_state IN ('valid', 'invalid')", name="validation_state"),
+        CheckConstraint(
+            "state IN ('suggested', 'accepted', 'corrected', 'rejected')", name="state"
+        ),
+    )
+
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"))
+    version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("document_version.id"))
+    field_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("index_field.id"))
+    raw_value: Mapped[str] = mapped_column(Text)
+    normalized_value: Mapped[str | None] = mapped_column(Text)
+    confidence: Mapped[float] = mapped_column(Float)
+    method: Mapped[str] = mapped_column(String(30))
+    page_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("page.id"))
+    char_start: Mapped[int] = mapped_column(Integer, default=0)
+    char_end: Mapped[int] = mapped_column(Integer, default=0)
+    # The words the value covers, in the page's pixels: {"page_width", "page_height", "boxes"}.
+    bbox: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+    validation_state: Mapped[str] = mapped_column(String(20), default="valid")
+    state: Mapped[str] = mapped_column(String(20), default="suggested")
+
+
+class ExtractionFeedback(IdMixin, TimestampMixin, Base):
+    """A person's correction of a suggested value. The record learning will draw on."""
+
+    __tablename__ = "extraction_feedback"
+
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"))
+    extracted_field_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("extracted_field.id"))
+    before_value: Mapped[str | None] = mapped_column(Text)
+    after_value: Mapped[str | None] = mapped_column(Text)
+    corrected_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))

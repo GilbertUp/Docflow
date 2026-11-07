@@ -24,6 +24,8 @@ class FieldModel(BaseModel):
     default_value: str | None = Field(default=None, max_length=500)
     validation: dict[str, Any] = Field(default_factory=dict)
     choices: list[ChoiceModel] = Field(default_factory=list)
+    # Where to find the value in the text: {"labels": [...], "pattern": "..."} (F07).
+    extraction: dict[str, Any] = Field(default_factory=dict)
 
 
 class TypeOut(BaseModel):
@@ -34,12 +36,18 @@ class TypeOut(BaseModel):
     row_version: int
     version: int | None
     fields: list[FieldModel]
+    keywords: list[str] = Field(default_factory=list)
+    auto_accept_threshold: float = 0.9
+    review_threshold: float = 0.6
 
 
 class CreateTypeRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     description: str = Field(default="", max_length=1000)
     fields: list[FieldModel]
+    keywords: list[str] = Field(default_factory=list, max_length=20)
+    auto_accept_threshold: float = Field(default=0.9, gt=0, le=1)
+    review_threshold: float = Field(default=0.6, gt=0, le=1)
 
 
 class NewVersionRequest(BaseModel):
@@ -52,6 +60,9 @@ class UpdateTypeRequest(BaseModel):
     name: str | None = Field(default=None, max_length=120)
     description: str | None = Field(default=None, max_length=1000)
     status: Literal["active", "archived"] | None = None
+    keywords: list[str] | None = Field(default=None, max_length=20)
+    auto_accept_threshold: float | None = Field(default=None, gt=0, le=1)
+    review_threshold: float | None = Field(default=None, gt=0, le=1)
 
 
 class IndexFieldOut(FieldModel):
@@ -76,3 +87,37 @@ class SetIndexRequest(BaseModel):
     # Every editable field to keep. A field left out is cleared. Numbers and dates may be text.
     values: dict[str, Any] = Field(default_factory=dict)
     row_version: int | None = None
+
+
+class ClassificationOut(BaseModel):
+    type_id: uuid.UUID | None
+    type_name: str | None
+    confidence: float
+    band: str
+    applied: bool
+
+
+class SuggestedFieldOut(BaseModel):
+    key: str
+    label: str
+    data_type: str
+    raw_value: str
+    value: str | None
+    confidence: float
+    band: str
+    method: str
+    page_number: int | None
+    bbox: dict[str, Any]
+    validation_state: str
+    state: str
+
+
+class SuggestionsOut(BaseModel):
+    version_number: int
+    text_state: str
+    classification: ClassificationOut | None
+    fields: list[SuggestedFieldOut]
+
+
+class RunOut(BaseModel):
+    version_number: int
