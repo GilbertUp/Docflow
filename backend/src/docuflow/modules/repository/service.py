@@ -763,6 +763,41 @@ class RepositoryService:
         )
         return document
 
+    def check_can_file(
+        self, session: Session, principal: Principal, destination: Destination
+    ) -> None:
+        """Raises unless the caller may file a document there. Changes nothing."""
+        tree = self._tree(session, principal)
+        target = self._target(session, tree, destination)
+        self._require(tree, target.anchor_id, "create")
+        self._ensure_writable(session, target)
+
+    def document_for_change(
+        self,
+        session: Session,
+        principal: Principal,
+        document_id: uuid.UUID,
+        permission: str,
+        *,
+        lock: bool = False,
+    ) -> Document:
+        """A document the caller may change in the way named by permission.
+
+        Unreadable is not found. Archived documents, and documents inside an archived cabinet or
+        folder, accept no change. The container is read directly, because a caller may hold rights
+        on the document without being able to see its folder.
+        """
+        tree = self._tree(session, principal)
+        document = self._document(session, tree, document_id, lock=lock)
+        self._require(tree, document.acl_anchor_id, permission)
+        if document.status != "active":
+            raise Conflict("That document is archived.")
+        cabinet = session.get(Cabinet, document.cabinet_id)
+        assert cabinet is not None
+        folder = session.get(Folder, document.folder_id) if document.folder_id else None
+        self._ensure_writable(session, _Target(cabinet, folder, document.acl_anchor_id))
+        return document
+
     def get_document(
         self, session: Session, principal: Principal, document_id: uuid.UUID
     ) -> Document:

@@ -45,6 +45,8 @@ type QueryValue = string | number | boolean | null | undefined;
 export interface RequestOptions {
   query?: Record<string, QueryValue>;
   body?: unknown;
+  /** Sent as is, for uploads. The browser streams the file without reading it into memory. */
+  rawBody?: Blob;
   signal?: AbortSignal;
   /** Sign-in calls expect a 401 and must not trigger the global sign-out. */
   skipAuthRedirect?: boolean;
@@ -89,7 +91,8 @@ export async function request<T>(
   options: RequestOptions = {},
 ): Promise<T> {
   const headers: Record<string, string> = { Accept: "application/json" };
-  if (options.body !== undefined) headers["Content-Type"] = "application/json";
+  if (options.rawBody) headers["Content-Type"] = "application/octet-stream";
+  else if (options.body !== undefined) headers["Content-Type"] = "application/json";
   if (method !== "GET" && csrfToken) headers["X-CSRF-Token"] = csrfToken;
 
   let response: Response;
@@ -97,7 +100,7 @@ export async function request<T>(
     response = await fetch(buildUrl(path, options.query), {
       method,
       headers,
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      body: options.rawBody ?? (options.body === undefined ? undefined : JSON.stringify(options.body)),
       credentials: "same-origin",
       signal: options.signal ?? null,
     });
@@ -124,6 +127,9 @@ export const api = {
   patch: <T>(path: string, body?: unknown, options?: RequestOptions) =>
     request<T>("PATCH", path, { ...options, body: body ?? undefined }),
   delete: <T>(path: string, options?: RequestOptions) => request<T>("DELETE", path, options),
+  /** Uploads a file as the raw request body. The name travels as a query value. */
+  upload: <T>(path: string, file: File, query: Record<string, QueryValue> = {}) =>
+    request<T>("POST", path, { query: { ...query, filename: file.name }, rawBody: file }),
 };
 
 export function errorMessage(error: unknown): string {

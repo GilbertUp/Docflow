@@ -10,6 +10,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
+from docuflow.modules.documents.api import router as documents_router
+from docuflow.modules.documents.scanner import build_scanner
+from docuflow.modules.documents.service import DocumentService
 from docuflow.modules.identity.api import (
     MUST_CHANGE_CODE,
     ApiContext,
@@ -65,8 +68,17 @@ def install(app: FastAPI, services: Services) -> ApiContext:
     ctx = build_context(services, RedisRateLimiter(services.redis))
     app.state.api = ctx
     app.state.repo = RepositoryService(services.audit, ctx.policy)
+    app.state.documents = DocumentService(
+        services.audit,
+        ctx.policy,
+        app.state.repo,
+        services.objects,
+        build_scanner(services.settings),
+        services.settings.max_upload_bytes,
+    )
     app.include_router(router)
     app.include_router(repository_router)
+    app.include_router(documents_router)
 
     @app.exception_handler(DomainError)
     async def domain_error(request: Request, exc: DomainError) -> JSONResponse:

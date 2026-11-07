@@ -50,7 +50,7 @@ from docuflow.platform.audit import AuditLog
 from docuflow.platform.crypto import LocalKeyProvider
 from docuflow.platform.db import Database, make_engine
 from docuflow.platform.models import Tenant
-from docuflow.platform.storage import S3ObjectStore
+from docuflow.platform.storage import EncryptedObjects, S3ObjectStore
 
 BACKEND = Path(__file__).resolve().parents[1]
 ROOT = BACKEND.parent
@@ -172,13 +172,17 @@ def build_services(urls: dict[str, str], count_attempts: bool = True) -> SimpleN
     store = S3ObjectStore(f"http://127.0.0.1:{port}", "us-east-1", "docuflow-dev", "dev", "dev")
     store.ensure_bucket()
     root = master_key()
+    keys = LocalKeyProvider(root)
     return SimpleNamespace(
-        settings=SimpleNamespace(log_level="INFO", environment="development"),
+        settings=SimpleNamespace(
+            log_level="INFO", environment="development", max_upload_bytes=100 * 1024 * 1024
+        ),
         db=Database(make_engine(urls["docuflow_app"]), make_engine(urls["docuflow_platform"])),
         audit=AuditLog(root),
-        keys=LocalKeyProvider(root),
+        keys=keys,
         redis=InMemoryRedis(count_attempts),
         store=store,
+        objects=EncryptedObjects(store, keys),
     )
 
 

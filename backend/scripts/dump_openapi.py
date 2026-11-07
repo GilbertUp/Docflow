@@ -12,12 +12,13 @@ from docuflow.main import create_app
 
 def main() -> int:
     services = SimpleNamespace(
-        settings=SimpleNamespace(log_level="WARNING", environment="test"),
+        settings=SimpleNamespace(log_level="WARNING", environment="test", max_upload_bytes=1),
         db=MagicMock(),
         audit=MagicMock(),
         keys=MagicMock(),
         redis=MagicMock(),
         store=MagicMock(),
+        objects=MagicMock(),
     )
     sys.stdout.write(json.dumps(create_app(services).openapi(), indent=2, sort_keys=True))  # type: ignore[arg-type]
     return 0

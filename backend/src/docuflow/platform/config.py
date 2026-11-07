@@ -45,6 +45,13 @@ class Settings(BaseSettings):
     master_key: SecretStr = Field(description="Base64 root key used to derive tenant keys")
     audit_hmac_key: SecretStr = Field(description="Base64 key held outside the database")
 
+    max_upload_bytes: int = Field(default=100 * 1024 * 1024, gt=0)
+    # "none" is for development and tests. Production must scan.
+    scanner: Literal["none", "clamav"] = "none"
+    clamav_host: str = "clamav"
+    clamav_port: int = 3310
+    clamav_timeout_seconds: float = Field(default=60.0, gt=0)
+
     job_max_attempts: int = 5
     job_heartbeat_timeout_seconds: int = 300
     job_retry_base_seconds: int = 30
@@ -59,6 +66,8 @@ class Settings(BaseSettings):
     def _validate_separation(self) -> Settings:
         if self.master_key.get_secret_value() == self.audit_hmac_key.get_secret_value():
             raise ValueError("master_key and audit_hmac_key must be different")
+        if self.environment == "production" and self.scanner == "none":
+            raise ValueError("production needs a malware scanner: set DOCUFLOW_SCANNER=clamav")
         return self
 
 

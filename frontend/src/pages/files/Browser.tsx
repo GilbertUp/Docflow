@@ -1,9 +1,16 @@
-import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
-import { api } from "../../api/client";
-import type { CabinetDetail, Children, Crumb, FolderDetail, Stats } from "../../api/types";
+import { api, errorMessage } from "../../api/client";
+import type {
+  CabinetDetail,
+  Children,
+  Crumb,
+  FolderDetail,
+  Stats,
+  UploadResult,
+} from "../../api/types";
 import {
   ActionMenu,
   EmptyState,
@@ -14,12 +21,14 @@ import {
   formatDate,
 } from "../../components/ui";
 import { AclDialog } from "./AclDialog";
+import { VersionsDialog } from "./VersionsDialog";
 import {
   DeleteDialog,
   DestinationDialog,
   NewFolderDialog,
   RenameDialog,
   type Target,
+  useRefreshFiles,
   useToggleArchive,
 } from "./dialogs";
 
@@ -32,6 +41,7 @@ type DialogState =
   | { kind: "copy"; target: Target }
   | { kind: "delete"; target: Target }
   | { kind: "acl" }
+  | { kind: "versions"; id: string; title: string }
   | null;
 
 interface Container {
@@ -94,6 +104,36 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
   const [dialog, setDialog] = useState<DialogState>(null);
   const [message, setMessage] = useState<string | null>(null);
   const archive = useToggleArchive();
+  const refresh = useRefreshFiles();
+  const fileInput = useRef<HTMLInputElement>(null);
+  // Kept with the location they belong to, so they do not follow you into another folder.
+  const [uploadNotes, setUploadNotes] = useState<{
+    where: string;
+    items: { tone: "success" | "error"; text: string }[];
+  } | null>(null);
+
+  const upload = useMutation({
+    mutationFn: async (files: File[]) => {
+      // One at a time keeps memory low and the messages in the order the files were chosen.
+      const notes: { tone: "success" | "error"; text: string }[] = [];
+      for (const file of files) {
+        try {
+          const result = await api.upload<UploadResult>(`/${kind}s/${id}/documents`, file);
+          notes.push({
+            tone: "success",
+            text: result.duplicate
+              ? `${file.name} was filed. The same file is already stored, so no extra space is used.`
+              : `${file.name} was filed.`,
+          });
+        } catch (error) {
+          notes.push({ tone: "error", text: `${file.name} was not filed. ${errorMessage(error)}` });
+        }
+      }
+      return notes;
+    },
+    onSuccess: (items) => setUploadNotes({ where: `${kind}:${id}`, items }),
+    onSettled: refresh,
+  });
 
   const detail = useQuery({
     queryKey: ["detail", kind, id],
@@ -212,6 +252,27 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
         >
           New folder
         </button>
+        <input
+          ref={fileInput}
+          type="file"
+          multiple
+          hidden
+          aria-label="Choose files to upload"
+          onChange={(event) => {
+            const files = Array.from(event.target.files ?? []);
+            event.target.value = "";
+            if (files.length > 0) upload.mutate(files);
+          }}
+        />
+        <button
+          type="button"
+          className="btn btn-primary"
+          disabled={!can("create") || archived || upload.isPending}
+          title={archived ? "Archived locations accept no new content" : undefined}
+          onClick={() => fileInput.current?.click()}
+        >
+          {upload.isPending ? "Uploading…" : "Upload files"}
+        </button>
         <button
           type="button"
           className="btn"
@@ -276,6 +337,13 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
 
       {message ? <Notice tone="success">{message}</Notice> : null}
       <ErrorNotice error={archive.error} />
+      {uploadNotes?.where === `${kind}:${id}`
+        ? uploadNotes.items.map((note) => (
+            <Notice key={note.text} tone={note.tone}>
+              {note.text}
+            </Notice>
+          ))
+        : null}
 
       <section className="panel" aria-labelledby="folders-heading">
         <h2 id="folders-heading">Folders</h2>
@@ -349,7 +417,7 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
         <h2 id="documents-heading">Documents</h2>
         {documents && documents.total === 0 ? (
           <EmptyState title="No documents here">
-            Uploading arrives with the next release. Documents filed by other means appear here.
+            Use Upload files to add the first one.
           </EmptyState>
         ) : documents ? (
           <>
@@ -378,6 +446,24 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
                       <td>{formatBytes(document.size_bytes)}</td>
                       <td>{formatDate(document.created_at)}</td>
                       <td className="actions">
+                        {can("download") ? (
+                          <a
+                            className="btn btn-quiet"
+                            href={`/api/v1/documents/${document.id}/download`}
+                            download
+                          >
+                            Download<span className="sr-only"> {document.title}</span>
+                          </a>
+                        ) : null}
+                        <button
+                          type="button"
+                          className="btn btn-quiet"
+                          onClick={() =>
+                            setDialog({ kind: "versions", id: document.id, title: document.title })
+                          }
+                        >
+                          Versions<span className="sr-only"> of {document.title}</span>
+                        </button>
                         <button
                           type="button"
                           className="btn btn-quiet"
@@ -455,6 +541,15 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
       ) : null}
       {dialog?.kind === "acl" ? (
         <AclDialog anchorId={container.anchorId} title={container.name} onClose={() => setDialog(null)} />
+      ) : null}
+      {dialog?.kind === "versions" ? (
+        <VersionsDialog
+          documentId={dialog.id}
+          title={dialog.title}
+          canAdd={can("version") && !archived}
+          canDownload={can("download")}
+          onClose={() => setDialog(null)}
+        />
       ) : null}
     </div>
   );
