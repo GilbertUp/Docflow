@@ -6,9 +6,9 @@ export default defineConfig({
   server: {
     port: 5173,
     // The API is a separate process in development. The browser still sees one origin.
-    proxy: { "/api": "http://127.0.0.1:8000" },
+    proxy: { "/api": process.env.DOCUFLOW_API ?? "http://127.0.0.1:8000" },
   },
-  preview: { proxy: { "/api": "http://127.0.0.1:8000" } },
+  preview: { proxy: { "/api": process.env.DOCUFLOW_API ?? "http://127.0.0.1:8000" } },
   build: { sourcemap: true, outDir: "dist" },
   test: {
     environment: "jsdom",

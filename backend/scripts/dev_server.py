@@ -49,12 +49,24 @@ from docuflow.modules.identity.models import (
     User,
 )
 from docuflow.modules.identity.policy import PolicyService, bump_permission_epoch
+from docuflow.modules.indexing.suggest import JOB_TYPE as FIELDS_JOB
+from docuflow.modules.indexing.suggest import SuggestionService
+from docuflow.modules.notifications.service import (
+    EMAIL_JOB,
+    SLA_JOB,
+    NotificationService,
+    build_sender,
+)
 from docuflow.modules.repository.models import Cabinet
 from docuflow.modules.repository.service import Destination, RepositoryService
+from docuflow.modules.search.service import JOB_TYPE as SEARCH_JOB
+from docuflow.modules.search.service import SearchService
+from docuflow.modules.workflow.service import JOB_TYPE as WORKFLOW_JOB
+from docuflow.modules.workflow.service import WorkflowService
 from docuflow.platform.audit import AuditLog
 from docuflow.platform.crypto import LocalKeyProvider
 from docuflow.platform.db import Database, make_engine
-from docuflow.platform.jobs import Dispatcher, HandlerRegistry, JobRunner
+from docuflow.platform.jobs import Dispatcher, HandlerRegistry, JobRunner, Maintenance
 from docuflow.platform.models import Tenant
 from docuflow.platform.storage import EncryptedObjects, S3ObjectStore
 
@@ -271,8 +283,12 @@ def seed(services: SimpleNamespace, fixed_password: str | None = None) -> None:
 
     with db.tenant_session(tenant_id) as session:
         for team, cabinet_name, extra in (
-            (finance_team, "Finance", ("create", "edit_metadata")),
-            (hr_team, "HR", ("create",)),
+            (
+                finance_team,
+                "Finance",
+                ("create", "edit_metadata", "annotate", "version", "download"),
+            ),
+            (hr_team, "HR", ("create", "annotate")),
         ):
             cabinet = session.scalar(select(Cabinet).where(Cabinet.name == cabinet_name))
             assert cabinet is not None
@@ -308,11 +324,25 @@ def run_jobs_inline(services: SimpleNamespace, stop: threading.Event) -> None:
     built = build_documents(services, repo, policy)
     registry.register(JOB_TYPE)(lambda job: built.imports.run(services.db, job))
     registry.register(EXTRACT_JOB)(lambda job: built.text.run(services.db, job))
+    registry.register(FIELDS_JOB)(
+        lambda job: SuggestionService(services.audit, policy, repo).run(services.db, job)
+    )
+    registry.register(SEARCH_JOB)(
+        lambda job: SearchService(services.audit, policy).run(services.db, job)
+    )
+    registry.register(WORKFLOW_JOB)(
+        lambda job: WorkflowService(services.audit, policy, repo).run(services.db, job)
+    )
+    notes = NotificationService(services.audit, policy, build_sender(object()))
+    registry.register(SLA_JOB)(lambda job: notes.run_sla(services.db, job))
+    registry.register(EMAIL_JOB)(lambda job: notes.run_email(services.db, job))
     runner = JobRunner(services.db, registry, services.audit, 1)
+    maintenance = Maintenance(services.db, services.audit, 300)
     pending: list[dict[str, Any]] = []
     dispatcher = Dispatcher(services.db, lambda _topic, payload: pending.append(payload))
     while not stop.wait(0.5):
         try:
+            maintenance.fire_timers()
             dispatcher.publish_batch()
             while pending:
                 payload = pending.pop(0)
