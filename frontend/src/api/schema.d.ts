@@ -493,6 +493,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/documents/{document_id}/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Suggestions For
+         * @description The type and values proposed from the document's text, with where each was found.
+         */
+        get: operations["get_suggestions_for_api_v1_documents__document_id__suggestions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{document_id}/suggestions/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Suggestions
+         * @description Proposes again from the current text. The result appears on the suggestions.
+         */
+        post: operations["run_suggestions_api_v1_documents__document_id__suggestions_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/documents/{document_id}/text": {
         parameters: {
             query?: never;
@@ -1131,6 +1171,19 @@ export interface components {
             /** Value */
             value: string;
         };
+        /** ClassificationOut */
+        ClassificationOut: {
+            /** Applied */
+            applied: boolean;
+            /** Band */
+            band: string;
+            /** Confidence */
+            confidence: number;
+            /** Type Id */
+            type_id: string | null;
+            /** Type Name */
+            type_name: string | null;
+        };
         /** CopyRequest */
         CopyRequest: {
             destination: components["schemas"]["DestinationModel"];
@@ -1197,14 +1250,26 @@ export interface components {
         /** CreateTypeRequest */
         CreateTypeRequest: {
             /**
+             * Auto Accept Threshold
+             * @default 0.9
+             */
+            auto_accept_threshold: number;
+            /**
              * Description
              * @default
              */
             description: string;
             /** Fields */
             fields: components["schemas"]["FieldModel"][];
+            /** Keywords */
+            keywords?: string[];
             /** Name */
             name: string;
+            /**
+             * Review Threshold
+             * @default 0.6
+             */
+            review_threshold: number;
         };
         /** CreateUserRequest */
         CreateUserRequest: {
@@ -1297,6 +1362,10 @@ export interface components {
             data_type: "text" | "number" | "date" | "boolean" | "choice";
             /** Default Value */
             default_value?: string | null;
+            /** Extraction */
+            extraction?: {
+                [key: string]: unknown;
+            };
             /** Key */
             key: string;
             /** Label */
@@ -1430,6 +1499,10 @@ export interface components {
             data_type: "text" | "number" | "date" | "boolean" | "choice";
             /** Default Value */
             default_value?: string | null;
+            /** Extraction */
+            extraction?: {
+                [key: string]: unknown;
+            };
             /** Key */
             key: string;
             /** Label */
@@ -1695,6 +1768,11 @@ export interface components {
             /** Permissions */
             permissions: string[];
         };
+        /** RunOut */
+        RunOut: {
+            /** Version Number */
+            version_number: number;
+        };
         /** SessionOut */
         SessionOut: {
             /**
@@ -1750,6 +1828,45 @@ export interface components {
             /** Subtree Documents */
             subtree_documents: number;
         };
+        /** SuggestedFieldOut */
+        SuggestedFieldOut: {
+            /** Band */
+            band: string;
+            /** Bbox */
+            bbox: {
+                [key: string]: unknown;
+            };
+            /** Confidence */
+            confidence: number;
+            /** Data Type */
+            data_type: string;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Method */
+            method: string;
+            /** Page Number */
+            page_number: number | null;
+            /** Raw Value */
+            raw_value: string;
+            /** State */
+            state: string;
+            /** Validation State */
+            validation_state: string;
+            /** Value */
+            value: string | null;
+        };
+        /** SuggestionsOut */
+        SuggestionsOut: {
+            classification: components["schemas"]["ClassificationOut"] | null;
+            /** Fields */
+            fields: components["schemas"]["SuggestedFieldOut"][];
+            /** Text State */
+            text_state: string;
+            /** Version Number */
+            version_number: number;
+        };
         /** TextOut */
         TextOut: {
             /** Error */
@@ -1774,6 +1891,11 @@ export interface components {
         };
         /** TypeOut */
         TypeOut: {
+            /**
+             * Auto Accept Threshold
+             * @default 0.9
+             */
+            auto_accept_threshold: number;
             /** Description */
             description: string;
             /** Fields */
@@ -1783,8 +1905,15 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Keywords */
+            keywords?: string[];
             /** Name */
             name: string;
+            /**
+             * Review Threshold
+             * @default 0.6
+             */
+            review_threshold: number;
             /** Row Version */
             row_version: number;
             /** Status */
@@ -1814,10 +1943,16 @@ export interface components {
         };
         /** UpdateTypeRequest */
         UpdateTypeRequest: {
+            /** Auto Accept Threshold */
+            auto_accept_threshold?: number | null;
             /** Description */
             description?: string | null;
+            /** Keywords */
+            keywords?: string[] | null;
             /** Name */
             name?: string | null;
+            /** Review Threshold */
+            review_threshold?: number | null;
             /** Row Version */
             row_version: number;
             /** Status */
@@ -3040,6 +3175,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DocumentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_suggestions_for_api_v1_documents__document_id__suggestions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuggestionsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_suggestions_api_v1_documents__document_id__suggestions_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"];
                 };
             };
             /** @description Validation Error */

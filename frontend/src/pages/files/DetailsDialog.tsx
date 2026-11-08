@@ -2,7 +2,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
 import { api, fieldErrors } from "../../api/client";
-import type { DocumentTypeRow, IndexField, IndexResult } from "../../api/types";
+import type {
+  DocumentTypeRow,
+  IndexField,
+  IndexResult,
+  SuggestedField,
+  Suggestions,
+} from "../../api/types";
 import {
   Dialog,
   ErrorNotice,
@@ -85,6 +91,47 @@ function FieldInput({
   );
 }
 
+const BAND_TEXT: Record<string, string> = {
+  auto: "high confidence",
+  review: "needs a check",
+  weak: "weak guess",
+};
+
+/** What was found for one field, where, and a way to take it. */
+function SuggestionHint({
+  suggestion,
+  current,
+  canEdit,
+  onUse,
+}: {
+  suggestion: SuggestedField;
+  current: string;
+  canEdit: boolean;
+  onUse: (value: string) => void;
+}) {
+  const value = suggestion.value ?? suggestion.raw_value;
+  if (suggestion.state === "rejected" || (current !== "" && current === value)) return null;
+  const where = suggestion.page_number ? `, page ${suggestion.page_number}` : "";
+  return (
+    <p className="muted">
+      Suggested for {suggestion.label}: <strong>{value}</strong> (
+      {BAND_TEXT[suggestion.band] ?? suggestion.band}
+      {where}
+      {suggestion.validation_state === "invalid" ? ", does not fit the field's rules" : ""}){" "}
+      {canEdit && suggestion.validation_state === "valid" ? (
+        <button
+          type="button"
+          className="btn btn-quiet"
+          onClick={() => onUse(value)}
+          aria-label={`Use the suggested ${suggestion.label}`}
+        >
+          Use
+        </button>
+      ) : null}
+    </p>
+  );
+}
+
 /** A document's type and the fields that type asks for. */
 export function DetailsDialog({
   documentId,
@@ -111,6 +158,27 @@ export function DetailsDialog({
     queryKey: ["document-types"],
     queryFn: () => api.get<DocumentTypeRow[]>("/document-types"),
   });
+
+  const suggestions = useQuery({
+    queryKey: ["suggestions", documentId],
+    queryFn: () => api.get<Suggestions>(`/documents/${documentId}/suggestions`),
+    retry: false,
+  });
+  const findAgain = useMutation({
+    mutationFn: () => api.post(`/documents/${documentId}/suggestions/run`, {}),
+    onSuccess: () => {
+      // The job runs in the background, so look again shortly.
+      window.setTimeout(() => {
+        void queryClient.invalidateQueries({ queryKey: ["suggestions", documentId] });
+        void queryClient.invalidateQueries({ queryKey: ["index", documentId] });
+      }, 3000);
+    },
+  });
+  const proposed = suggestions.data?.classification;
+  const byKey = useMemo(
+    () => new Map((suggestions.data?.fields ?? []).map((item) => [item.key, item])),
+    [suggestions.data],
+  );
 
   // Start the form from what the document holds.
   useEffect(() => {
@@ -196,22 +264,63 @@ export function DetailsDialog({
             placeholder="No type"
             disabled={!canEdit}
           />
+          {proposed && proposed.type_id && !proposed.applied && proposed.type_id !== typeId ? (
+            <p className="muted">
+              This looks like a {proposed.type_name} ({BAND_TEXT[proposed.band] ?? proposed.band}).{" "}
+              {canEdit ? (
+                <button
+                  type="button"
+                  className="btn btn-quiet"
+                  onClick={() => changeType(proposed.type_id ?? "")}
+                >
+                  Use {proposed.type_name}
+                </button>
+              ) : null}
+            </p>
+          ) : null}
           {typeId && index.data.outdated && unchanged ? (
             <Notice tone="info">
               This document was filled in with an older version of its fields. Saving moves it to
               the current version.
             </Notice>
           ) : null}
-          {shown.map((field) => (
-            <FieldInput
-              key={`${typeId}-${field.key}`}
-              field={field}
-              value={values[field.key] ?? ""}
-              error={errors[field.key]}
-              disabled={!canEdit}
-              onChange={(value) => setValues((current) => ({ ...current, [field.key]: value }))}
-            />
-          ))}
+          {shown.map((field) => {
+            const suggestion = byKey.get(field.key);
+            const setValue = (value: string) =>
+              setValues((current) => ({ ...current, [field.key]: value }));
+            return (
+              <div key={`${typeId}-${field.key}`}>
+                <FieldInput
+                  field={field}
+                  value={values[field.key] ?? ""}
+                  error={errors[field.key]}
+                  disabled={!canEdit}
+                  onChange={setValue}
+                />
+                {suggestion && !field.read_only ? (
+                  <SuggestionHint
+                    suggestion={suggestion}
+                    current={values[field.key] ?? ""}
+                    canEdit={canEdit}
+                    onUse={setValue}
+                  />
+                ) : null}
+              </div>
+            );
+          })}
+          {canEdit && suggestions.data?.text_state === "done" ? (
+            <div className="toolbar">
+              <button
+                type="button"
+                className="btn"
+                disabled={findAgain.isPending}
+                onClick={() => findAgain.mutate()}
+              >
+                Look for values again
+              </button>
+            </div>
+          ) : null}
+          <ErrorNotice error={findAgain.error} />
           <ErrorNotice error={save.error && Object.keys(errors).length === 0 ? save.error : null} />
           {Object.keys(errors).length > 0 ? (
             <Notice tone="error">Some values are not valid. They are marked above.</Notice>

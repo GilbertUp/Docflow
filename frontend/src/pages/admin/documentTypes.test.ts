@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { keyFromLabel, parseChoices, toDefinition } from "./DocumentTypes";
+import { keyFromLabel, parseChoices, parseLabels, toDefinition } from "./DocumentTypes";
 
 describe("keyFromLabel", () => {
   it("makes a lowercase key from a label", () => {
@@ -44,6 +44,8 @@ describe("toDefinition", () => {
     min: "0",
     max: " 100 ",
     choices: "a\nb",
+    labels: "Total, Amount due",
+    extract_pattern: "",
   };
 
   it("keeps only the rules that fit the type", () => {
@@ -55,6 +57,7 @@ describe("toDefinition", () => {
       read_only: false,
       default_value: null,
       validation: { min: "0", max: "100" },
+      extraction: { labels: ["Total", "Amount due"] },
       choices: [],
     });
   });
@@ -68,5 +71,14 @@ describe("toDefinition", () => {
       { value: "b", label: "b" },
     ]);
     expect(choice.validation).toEqual({});
+  });
+});
+
+describe("parseLabels", () => {
+  it("splits on commas and lines and drops blanks and repeats", () => {
+    expect(parseLabels("Invoice no, Invoice number,\n Invoice no ,, Invoice no")).toEqual([
+      "Invoice no",
+      "Invoice number",
+    ]);
   });
 });

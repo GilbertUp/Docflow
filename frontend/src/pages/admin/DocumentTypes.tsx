@@ -40,6 +40,8 @@ interface Draft {
   min: string;
   max: string;
   choices: string;
+  labels: string;
+  extract_pattern: string;
 }
 
 let nextId = 1;
@@ -59,6 +61,8 @@ function blank(): Draft {
     min: "",
     max: "",
     choices: "",
+    labels: "",
+    extract_pattern: "",
   };
 }
 
@@ -89,6 +93,8 @@ function toDraft(field: FieldDefinition): Draft {
     max_length: text("max_length"),
     min: text("min"),
     max: text("max"),
+    labels: Array.isArray(field.extraction?.labels) ? (field.extraction.labels as string[]).join(", ") : "",
+    extract_pattern: typeof field.extraction?.pattern === "string" ? field.extraction.pattern : "",
     choices: (field.choices ?? [])
       .map((choice) => (choice.label === choice.value ? choice.value : `${choice.value} | ${choice.label}`))
       .join("\n"),
@@ -108,6 +114,11 @@ export function parseChoices(text: string): { value: string; label: string }[] {
     });
 }
 
+/** "Invoice no, Invoice number" to a list, dropping blanks and repeats. */
+export function parseLabels(text: string): string[] {
+  return [...new Set(text.split(/[,\n]/).map((item) => item.trim()).filter(Boolean))];
+}
+
 export function toDefinition(draft: Draft): FieldDefinition {
   const validation: Record<string, unknown> = {};
   if (draft.data_type === "text") {
@@ -119,6 +130,10 @@ export function toDefinition(draft: Draft): FieldDefinition {
     if (draft.min.trim()) validation.min = draft.min.trim();
     if (draft.max.trim()) validation.max = draft.max.trim();
   }
+  const extraction: Record<string, unknown> = {};
+  const labels = parseLabels(draft.labels);
+  if (labels.length > 0) extraction.labels = labels;
+  if (draft.extract_pattern.trim()) extraction.pattern = draft.extract_pattern.trim();
   return {
     key: draft.key.trim(),
     label: draft.label.trim(),
@@ -127,6 +142,7 @@ export function toDefinition(draft: Draft): FieldDefinition {
     read_only: false,
     default_value: draft.default_value.trim() || null,
     validation,
+    extraction,
     choices: draft.data_type === "choice" ? parseChoices(draft.choices) : [],
   };
 }
@@ -189,6 +205,21 @@ function FieldRow({
         />
         Required (field {number})
       </label>
+      <div className="field-grid">
+        <TextField
+          label={`Labels to look for (field ${number})`}
+          value={draft.labels}
+          onChange={(labels) => onChange({ labels })}
+          hint="Words that come just before the value on the page, separated by commas. Used to suggest values."
+        />
+        <TextField
+          label={`Pattern to look for (field ${number})`}
+          value={draft.extract_pattern}
+          onChange={(extract_pattern) => onChange({ extract_pattern })}
+          hint="Optional. A regular expression that finds the value anywhere, for example INV-\d{4}."
+          maxLength={200}
+        />
+      </div>
       {draft.data_type === "text" ? (
         <div className="field-grid">
           <TextField
@@ -272,6 +303,7 @@ function TypeDialog({ type, onClose }: { type: DocumentTypeRow | null; onClose: 
   const queryClient = useQueryClient();
   const [name, setName] = useState(type?.name ?? "");
   const [description, setDescription] = useState(type?.description ?? "");
+  const [keywords, setKeywords] = useState((type?.keywords ?? []).join(", "));
   const [drafts, setDrafts] = useState<Draft[]>(() =>
     type && type.fields.length > 0 ? type.fields.map(toDraft) : [blank()],
   );
@@ -284,7 +316,12 @@ function TypeDialog({ type, onClose }: { type: DocumentTypeRow | null; onClose: 
             row_version: type.row_version,
             fields,
           })
-        : api.post<DocumentTypeRow>("/document-types", { name: name.trim(), description, fields });
+        : api.post<DocumentTypeRow>("/document-types", {
+            name: name.trim(),
+            description,
+            fields,
+            keywords: parseLabels(keywords),
+          });
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["document-types"] });
@@ -314,6 +351,12 @@ function TypeDialog({ type, onClose }: { type: DocumentTypeRow | null; onClose: 
           <>
             <TextField label="Name" value={name} onChange={setName} required maxLength={120} autoFocus />
             <TextField label="Description" value={description} onChange={setDescription} maxLength={1000} />
+            <TextField
+              label="Words that identify this type"
+              value={keywords}
+              onChange={setKeywords}
+              hint="Separated by commas, for example invoice, supplier, total. Used to suggest the type of a document."
+            />
           </>
         )}
         {drafts.map((draft, index) => (
@@ -387,10 +430,67 @@ function RenameDialog({ type, onClose }: { type: DocumentTypeRow; onClose: () =>
   );
 }
 
+/** Keywords and confidence levels that steer how types and values are suggested. */
+function RecognitionDialog({ type, onClose }: { type: DocumentTypeRow; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [keywords, setKeywords] = useState((type.keywords ?? []).join(", "));
+  const [auto, setAuto] = useState(String(type.auto_accept_threshold ?? 0.9));
+  const [review, setReview] = useState(String(type.review_threshold ?? 0.6));
+  const save = useMutation({
+    mutationFn: () =>
+      api.patch(`/document-types/${type.id}`, {
+        row_version: type.row_version,
+        keywords: parseLabels(keywords),
+        auto_accept_threshold: Number(auto),
+        review_threshold: Number(review),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["document-types"] });
+      onClose();
+    },
+  });
+  return (
+    <Dialog title={`Recognition for ${type.name}`} onClose={onClose}>
+      <Form onSubmit={() => save.mutate()}>
+        <TextField
+          label="Words that identify this type"
+          value={keywords}
+          onChange={setKeywords}
+          hint="Separated by commas."
+        />
+        <TextField
+          label="Fill in at once from"
+          value={auto}
+          onChange={setAuto}
+          inputMode="decimal"
+          hint="A confidence from 0 to 1. At or above this, a found value is filled in without asking."
+        />
+        <TextField
+          label="Show as a suggestion from"
+          value={review}
+          onChange={setReview}
+          inputMode="decimal"
+          hint="Below this a suggestion is marked as a weak guess. It must not be higher than the level above."
+        />
+        <ErrorNotice error={save.error} />
+        <FormActions>
+          <button type="button" className="btn" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="submit" className="btn btn-primary" disabled={save.isPending}>
+            Save
+          </button>
+        </FormActions>
+      </Form>
+    </Dialog>
+  );
+}
+
 type DialogState =
   | { kind: "create" }
   | { kind: "fields"; type: DocumentTypeRow }
   | { kind: "rename"; type: DocumentTypeRow }
+  | { kind: "recognition"; type: DocumentTypeRow }
   | null;
 
 export function DocumentTypes() {
@@ -477,6 +577,9 @@ export function DocumentTypes() {
                             Change fields…
                           </button>
                         ) : null}
+                        <button type="button" onClick={() => setDialog({ kind: "recognition", type })}>
+                          Recognition…
+                        </button>
                         <button type="button" onClick={() => setDialog({ kind: "rename", type })}>
                           Rename…
                         </button>
@@ -495,6 +598,9 @@ export function DocumentTypes() {
       {dialog?.kind === "create" ? <TypeDialog type={null} onClose={() => setDialog(null)} /> : null}
       {dialog?.kind === "fields" ? (
         <TypeDialog type={dialog.type} onClose={() => setDialog(null)} />
+      ) : null}
+      {dialog?.kind === "recognition" ? (
+        <RecognitionDialog type={dialog.type} onClose={() => setDialog(null)} />
       ) : null}
       {dialog?.kind === "rename" ? <RenameDialog type={dialog.type} onClose={() => setDialog(null)} /> : null}
     </div>
