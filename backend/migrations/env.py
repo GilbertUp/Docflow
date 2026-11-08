@@ -14,6 +14,7 @@ from docuflow.modules.identity import models as identity_models  # noqa: F401
 from docuflow.modules.indexing import models as indexing_models  # noqa: F401
 from docuflow.modules.notifications import models as notifications_models  # noqa: F401
 from docuflow.modules.repository import models as repository_models  # noqa: F401
+from docuflow.modules.retention import models as retention_models  # noqa: F401
 from docuflow.modules.search import models as search_models  # noqa: F401
 from docuflow.modules.signatures import models as signatures_models  # noqa: F401
 from docuflow.modules.workflow import models as workflow_models  # noqa: F401

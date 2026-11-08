@@ -10,6 +10,7 @@ import { DocumentTypes } from "./pages/admin/DocumentTypes";
 import { Roles } from "./pages/admin/Roles";
 import { Users } from "./pages/admin/Users";
 import { FormsAdmin } from "./pages/admin/FormsAdmin";
+import { Retention } from "./pages/admin/Retention";
 import { Workflows } from "./pages/admin/Workflows";
 import { Browser } from "./pages/files/Browser";
 import { CabinetsOverview, FilesLayout } from "./pages/files/FilesLayout";
@@ -65,6 +66,7 @@ export function App() {
           <Route path="admin/groups" element={<Groups />} />
           <Route path="admin/roles" element={<Roles />} />
           <Route path="admin/document-types" element={<DocumentTypes />} />
+          <Route path="admin/retention" element={<Retention />} />
           <Route path="admin/forms" element={<FormsAdmin />} />
           <Route path="admin/workflows" element={<Workflows />} />
           <Route path="admin/api-keys" element={<ApiKeys />} />

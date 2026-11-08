@@ -52,6 +52,11 @@ export type ApprovalRow = S["ApprovalOut"];
 export type SignatureRow = S["SignatureOut"];
 export type StampRow = S["StampOut"];
 export type AppliedStamp = S["AppliedStampOut"];
+export type RetentionClassRow = S["ClassOut"];
+export type DocumentRetention = S["RetentionOut"];
+export type LegalHoldRow = S["HoldOut"];
+export type DisposalCandidate = S["CandidateOut"];
+export type DisposalRecord = S["DisposalOut"];
 export type Suggestions = S["SuggestionsOut"];
 export type SuggestedField = S["SuggestedFieldOut"];
 export type LanguageList = S["LanguagesOut"];
@@ -103,5 +108,6 @@ export const SYSTEM_PERMISSIONS = [
   ["integrations.manage", "Manage API keys and identity providers"],
   ["document_types.manage", "Create document types and change their fields"],
   ["workflows.manage", "Create workflows and change their steps"],
+  ["retention.manage", "Set retention classes and legal holds"],
   ["forms.manage", "Create forms and see every submission"],
 ] as const;

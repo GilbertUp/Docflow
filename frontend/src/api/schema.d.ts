@@ -377,6 +377,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/disposal/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Candidates
+         * @description Documents past their retention, not on hold, that the caller may dispose of.
+         */
+        get: operations["candidates_api_v1_disposal_candidates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/disposal/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Disposal Events */
+        get: operations["disposal_events_api_v1_disposal_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/document-link-types": {
         parameters: {
             query?: never;
@@ -562,6 +599,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/documents/{document_id}/dispose": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dispose
+         * @description Destroys a document that is due. This cannot be undone. A permanent record is kept.
+         */
+        post: operations["dispose_api_v1_documents__document_id__dispose_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/documents/{document_id}/download": {
         parameters: {
             query?: never;
@@ -711,6 +768,24 @@ export interface paths {
          */
         get: operations["preview_page_api_v1_documents__document_id__preview_pages__number__get"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{document_id}/retention": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Document Retention */
+        get: operations["get_document_retention_api_v1_documents__document_id__retention_get"];
+        /** Set Document Retention */
+        put: operations["set_document_retention_api_v1_documents__document_id__retention_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1265,6 +1340,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/legal-holds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Holds */
+        get: operations["list_holds_api_v1_legal_holds_get"];
+        put?: never;
+        /** Create Hold */
+        post: operations["create_hold_api_v1_legal_holds_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/legal-holds/{hold_id}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Hold Documents */
+        get: operations["hold_documents_api_v1_legal_holds__hold_id__documents_get"];
+        put?: never;
+        /** Add To Hold */
+        post: operations["add_to_hold_api_v1_legal_holds__hold_id__documents_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/legal-holds/{hold_id}/documents/{document_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove From Hold */
+        delete: operations["remove_from_hold_api_v1_legal_holds__hold_id__documents__document_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/legal-holds/{hold_id}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Release Hold */
+        post: operations["release_hold_api_v1_legal_holds__hold_id__release_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/notification-preferences": {
         parameters: {
             query?: never;
@@ -1389,6 +1534,41 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/retention-classes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Classes */
+        get: operations["list_classes_api_v1_retention_classes_get"];
+        put?: never;
+        /** Create Class */
+        post: operations["create_class_api_v1_retention_classes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/retention-classes/{class_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Class */
+        patch: operations["update_class_api_v1_retention_classes__class_id__patch"];
         trace?: never;
     };
     "/api/v1/roles": {
@@ -1833,6 +2013,14 @@ export interface components {
              */
             to_document_id: string;
         };
+        /** AddToHoldRequest */
+        AddToHoldRequest: {
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+        };
         /** AnchorOut */
         AnchorOut: {
             /**
@@ -2003,6 +2191,23 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** CandidateOut */
+        CandidateOut: {
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /**
+             * Eligible At
+             * Format: date-time
+             */
+            eligible_at: string;
+            /** Retention Class */
+            retention_class: string;
+            /** Title */
+            title: string;
+        };
         /** ChangePasswordRequest */
         ChangePasswordRequest: {
             /** Current Password */
@@ -2022,6 +2227,24 @@ export interface components {
             label: string;
             /** Value */
             value: string;
+        };
+        /** ClassOut */
+        ClassOut: {
+            /** Description */
+            description: string;
+            /** Duration Days */
+            duration_days: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Status */
+            status: string;
+            /** Trigger */
+            trigger: string;
         };
         /** ClassificationOut */
         ClassificationOut: {
@@ -2091,6 +2314,24 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** CreateClassRequest */
+        CreateClassRequest: {
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Duration Days */
+            duration_days: number;
+            /** Name */
+            name: string;
+            /**
+             * Trigger
+             * @default created
+             * @enum {string}
+             */
+            trigger: "created" | "last_version";
+        };
         /** CreateDepartmentRequest */
         CreateDepartmentRequest: {
             /** Name */
@@ -2124,6 +2365,13 @@ export interface components {
             description: string;
             /** Name */
             name: string;
+        };
+        /** CreateHoldRequest */
+        CreateHoldRequest: {
+            /** Name */
+            name: string;
+            /** Reason */
+            reason: string;
         };
         /** CreateRoleRequest */
         CreateRoleRequest: {
@@ -2337,6 +2585,45 @@ export interface components {
             /** Folder Id */
             folder_id?: string | null;
         };
+        /** DisposalOut */
+        DisposalOut: {
+            /**
+             * Approver Id
+             * Format: uuid
+             */
+            approver_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Reason */
+            reason: string | null;
+            /** Retention Class */
+            retention_class: string;
+            /** Title */
+            title: string;
+            /** Versions */
+            versions: number;
+        };
+        /** DisposeRequest */
+        DisposeRequest: {
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+        };
         /** DocumentOut */
         DocumentOut: {
             /**
@@ -2528,6 +2815,23 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** HeldDocumentOut */
+        HeldDocumentOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
+        };
+        /** HeldDocumentsOut */
+        HeldDocumentsOut: {
+            /** Readable */
+            readable: components["schemas"]["HeldDocumentOut"][];
+            /** Total */
+            total: number;
+        };
         /** HitOut */
         HitOut: {
             /**
@@ -2561,6 +2865,41 @@ export interface components {
             title: string;
             /** Type Name */
             type_name: string | null;
+        };
+        /** HoldOut */
+        HoldOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Documents */
+            documents: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Reason */
+            reason: string;
+            /** Release Reason */
+            release_reason: string | null;
+            /** Released At */
+            released_at: string | null;
+            /** Status */
+            status: string;
+        };
+        /** HoldRef */
+        HoldRef: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
         };
         /** ImportItemOut */
         ImportItemOut: {
@@ -3012,6 +3351,11 @@ export interface components {
             /** Recovery Codes */
             recovery_codes: string[];
         };
+        /** ReleaseHoldRequest */
+        ReleaseHoldRequest: {
+            /** Reason */
+            reason: string;
+        };
         /** ReplaceAclRequest */
         ReplaceAclRequest: {
             /** Entries */
@@ -3021,6 +3365,21 @@ export interface components {
         ResetPasswordRequest: {
             /** Password */
             password: string;
+        };
+        /** RetentionOut */
+        RetentionOut: {
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** Eligible At */
+            eligible_at: string | null;
+            /** Holds */
+            holds: components["schemas"]["HoldRef"][];
+            retention_class: components["schemas"]["ClassOut"] | null;
+            /** Status */
+            status: string;
         };
         /** RevokeRequest */
         RevokeRequest: {
@@ -3119,6 +3478,11 @@ export interface components {
             email: {
                 [key: string]: boolean;
             };
+        };
+        /** SetRetentionRequest */
+        SetRetentionRequest: {
+            /** Class Id */
+            class_id: string | null;
         };
         /** SetSlaRequest */
         SetSlaRequest: {
@@ -3468,6 +3832,15 @@ export interface components {
             name?: string | null;
             /** Row Version */
             row_version: number;
+            /** Status */
+            status?: ("active" | "archived") | null;
+        };
+        /** UpdateClassRequest */
+        UpdateClassRequest: {
+            /** Duration Days */
+            duration_days?: number | null;
+            /** Name */
+            name?: string | null;
             /** Status */
             status?: ("active" | "archived") | null;
         };
@@ -4512,6 +4885,46 @@ export interface operations {
             };
         };
     };
+    candidates_api_v1_disposal_candidates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateOut"][];
+                };
+            };
+        };
+    };
+    disposal_events_api_v1_disposal_events_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisposalOut"][];
+                };
+            };
+        };
+    };
     link_types_api_v1_document_link_types_get: {
         parameters: {
             query?: never;
@@ -4917,6 +5330,41 @@ export interface operations {
             };
         };
     };
+    dispose_api_v1_documents__document_id__dispose_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DisposeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisposalOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     download_api_v1_documents__document_id__download_get: {
         parameters: {
             query?: never;
@@ -5228,6 +5676,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_document_retention_api_v1_documents__document_id__retention_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetentionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_document_retention_api_v1_documents__document_id__retention_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetRetentionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetentionOut"];
                 };
             };
             /** @description Validation Error */
@@ -6568,6 +7082,199 @@ export interface operations {
             };
         };
     };
+    list_holds_api_v1_legal_holds_get: {
+        parameters: {
+            query?: {
+                include_released?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HoldOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_hold_api_v1_legal_holds_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateHoldRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HoldOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hold_documents_api_v1_legal_holds__hold_id__documents_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hold_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HeldDocumentsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_to_hold_api_v1_legal_holds__hold_id__documents_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hold_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddToHoldRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_from_hold_api_v1_legal_holds__hold_id__documents__document_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hold_id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    release_hold_api_v1_legal_holds__hold_id__release_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hold_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReleaseHoldRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HoldOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_preferences_api_v1_notification_preferences_get: {
         parameters: {
             query?: never;
@@ -6761,6 +7468,105 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PermissionOut"][];
+                };
+            };
+        };
+    };
+    list_classes_api_v1_retention_classes_get: {
+        parameters: {
+            query?: {
+                include_archived?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_class_api_v1_retention_classes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateClassRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_class_api_v1_retention_classes__class_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateClassRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

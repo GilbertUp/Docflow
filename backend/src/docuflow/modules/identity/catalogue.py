@@ -12,6 +12,7 @@ SYSTEM_PERMISSIONS: dict[str, str] = {
     "integrations.manage": "Manage API keys and identity providers",
     "document_types.manage": "Create document types and change the fields they have",
     "workflows.manage": "Create workflows and change their steps",
+    "retention.manage": "Set retention classes and legal holds",
     "forms.manage": "Create forms and see every submission",
 }
 

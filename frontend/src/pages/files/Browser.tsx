@@ -29,6 +29,7 @@ import { DetailsDialog } from "./DetailsDialog";
 import { DiscussionDialog } from "./DiscussionDialog";
 import { LinksDialog } from "./LinksDialog";
 import { PreviewDialog } from "./PreviewDialog";
+import { RetentionDialog } from "./RetentionDialog";
 import { SignDialog } from "./SignDialog";
 import { WorkflowDialog } from "./WorkflowDialog";
 import { TextDialog } from "./TextDialog";
@@ -59,6 +60,7 @@ type DialogState =
   | { kind: "discuss"; id: string; title: string }
   | { kind: "workflow"; id: string; title: string }
   | { kind: "sign"; id: string; title: string }
+  | { kind: "retention"; id: string; title: string }
   | { kind: "details"; id: string; title: string }
   | null;
 
@@ -195,7 +197,7 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
   }
 
   const container = toContainer(kind, detail.data);
-  const { me } = useAuth();
+  const { me, can: systemCan } = useAuth();
   const can = (permission: string) => container.permissions.includes(permission);
   const self: Target = {
     type: container.type,
@@ -530,6 +532,15 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
                           type="button"
                           className="btn btn-quiet"
                           onClick={() =>
+                            setDialog({ kind: "retention", id: document.id, title: document.title })
+                          }
+                        >
+                          Retention<span className="sr-only"> of {document.title}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-quiet"
+                          onClick={() =>
                             setDialog({ kind: "sign", id: document.id, title: document.title })
                           }
                         >
@@ -676,6 +687,14 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
           documentId={dialog.id}
           title={dialog.title}
           canEdit={can("edit_metadata") && !archived}
+          onClose={() => setDialog(null)}
+        />
+      ) : null}
+      {dialog?.kind === "retention" ? (
+        <RetentionDialog
+          documentId={dialog.id}
+          title={dialog.title}
+          canManage={systemCan("retention.manage")}
           onClose={() => setDialog(null)}
         />
       ) : null}
