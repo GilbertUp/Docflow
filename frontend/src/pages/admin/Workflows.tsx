@@ -2,7 +2,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { api, fieldErrors } from "../../api/client";
-import type { DocumentTypeRow, PersonRow, SlaPolicyRow, WorkflowRow } from "../../api/types";
+import type {
+  DocumentTypeRow,
+  PersonRow,
+  SlaPolicyRow,
+  StampRow,
+  WorkflowRow,
+} from "../../api/types";
 import { useAuth } from "../../auth/AuthContext";
 import {
   ActionMenu,
@@ -266,6 +272,72 @@ function SlaPanel() {
   );
 }
 
+const STAMP_COLORS = [
+  { value: "red", label: "Red" },
+  { value: "green", label: "Green" },
+  { value: "blue", label: "Blue" },
+  { value: "black", label: "Black" },
+];
+
+function StampsPanel() {
+  const queryClient = useQueryClient();
+  const [name, setName] = useState("");
+  const [text, setText] = useState("");
+  const [color, setColor] = useState("red");
+  const stamps = useQuery({
+    queryKey: ["stamps", "all"],
+    queryFn: () => api.get<StampRow[]>("/stamps", { query: { include_archived: true } }),
+  });
+  const reload = () => void queryClient.invalidateQueries({ queryKey: ["stamps"] });
+  const create = useMutation({
+    mutationFn: () => api.post("/stamps", { name: name.trim(), text: text.trim(), color }),
+    onSuccess: () => {
+      setName("");
+      setText("");
+      reload();
+    },
+  });
+  const toggle = useMutation({
+    mutationFn: (stamp: StampRow) =>
+      api.patch(`/stamps/${stamp.id}`, { status: stamp.status === "active" ? "archived" : "active" }),
+    onSuccess: reload,
+  });
+  return (
+    <section>
+      <h2>Stamps</h2>
+      <p className="muted">Marks such as APPROVED that people can place on a page of a document.</p>
+      <ErrorNotice error={stamps.error ?? toggle.error} />
+      <ul className="plain-list">
+        {(stamps.data ?? []).map((stamp) => (
+          <li key={stamp.id}>
+            {stamp.name}: <strong>{stamp.text}</strong> ({stamp.color})
+            {stamp.status === "archived" ? <span className="badge badge-warn">Archived</span> : null}
+            <button type="button" className="btn btn-quiet" onClick={() => toggle.mutate(stamp)}>
+              {stamp.status === "active" ? "Archive" : "Restore"}
+              <span className="sr-only"> {stamp.name}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      <Form onSubmit={() => create.mutate()}>
+        <TextField label="Stamp name" value={name} onChange={setName} maxLength={60} />
+        <TextField label="Text on the stamp" value={text} onChange={setText} maxLength={30} />
+        <SelectField label="Colour" value={color} onChange={setColor} options={STAMP_COLORS} />
+        <ErrorNotice error={create.error} />
+        <FormActions>
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={create.isPending || !name.trim() || !text.trim()}
+          >
+            Add stamp
+          </button>
+        </FormActions>
+      </Form>
+    </section>
+  );
+}
+
 type DialogState = { kind: "create" } | { kind: "edit"; workflow: WorkflowRow } | null;
 
 export function Workflows() {
@@ -353,6 +425,7 @@ export function Workflows() {
         </div>
       ) : null}
       {manage ? <SlaPanel /> : null}
+      {manage ? <StampsPanel /> : null}
       {dialog?.kind === "create" ? <WorkflowDialog workflow={null} onClose={() => setDialog(null)} /> : null}
       {dialog?.kind === "edit" ? (
         <WorkflowDialog workflow={dialog.workflow} onClose={() => setDialog(null)} />

@@ -15,6 +15,7 @@ from docuflow.modules.indexing import models as indexing_models  # noqa: F401
 from docuflow.modules.notifications import models as notifications_models  # noqa: F401
 from docuflow.modules.repository import models as repository_models  # noqa: F401
 from docuflow.modules.search import models as search_models  # noqa: F401
+from docuflow.modules.signatures import models as signatures_models  # noqa: F401
 from docuflow.modules.workflow import models as workflow_models  # noqa: F401
 from docuflow.platform import models  # noqa: F401  # registers tables on the metadata
 from docuflow.platform.db import Base

@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pypdfium2 as pdfium
-from PIL import Image, ImageOps, UnidentifiedImageError
+from PIL import Image, ImageDraw, ImageFont, ImageOps, UnidentifiedImageError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -27,6 +27,7 @@ from docuflow.modules.identity.auth import Principal
 from docuflow.modules.identity.policy import PolicyService
 from docuflow.modules.repository.models import Document
 from docuflow.modules.repository.service import RepositoryService
+from docuflow.modules.signatures.models import StampApplication
 from docuflow.platform.audit import AuditActor, AuditLog
 from docuflow.platform.db import Database
 from docuflow.platform.errors import Conflict, DomainError, Forbidden, NotFound
@@ -69,6 +70,37 @@ def kind_of(mime: str) -> str:
     if mime == "application/pdf" or mime in IMAGE_TYPES:
         return "pages"
     return "text" if mime in TEXT_TYPES else "none"
+
+
+STAMP_COLORS = {
+    "red": (190, 30, 30),
+    "green": (20, 120, 50),
+    "blue": (30, 70, 170),
+    "black": (20, 20, 20),
+}
+
+
+def draw_stamps(image: Image.Image, marks: list[tuple[str, str, float, float]]) -> None:
+    """Draws each stamp as a bordered label centred where it was placed."""
+    if not marks:
+        return
+    draw = ImageDraw.Draw(image)
+    size = max(12, round(image.width * 0.045))
+    font = ImageFont.load_default(size=size)
+    for text, color, x, y in marks:
+        ink = STAMP_COLORS.get(color, STAMP_COLORS["black"])
+        left, top, right, bottom = draw.textbbox((0, 0), text, font=font)
+        width, height = right - left, bottom - top
+        pad = max(4, size // 4)
+        centre_x, centre_y = x * image.width, y * image.height
+        box = (
+            centre_x - width / 2 - pad,
+            centre_y - height / 2 - pad,
+            centre_x + width / 2 + pad,
+            centre_y + height / 2 + pad,
+        )
+        draw.rectangle(box, outline=ink, width=max(2, size // 10))
+        draw.text((box[0] + pad - left, box[1] + pad - top), text, fill=ink, font=font)
 
 
 class PreviewService:
@@ -160,6 +192,15 @@ class PreviewService:
             if kind_of(binary.mime) != "pages":
                 raise PreviewUnavailable("This kind of file cannot be shown as pages.")
             version_number = version.number
+            marks = [
+                (m.text, m.color, m.x, m.y)
+                for m in session.scalars(
+                    select(StampApplication).where(
+                        StampApplication.version_id == version.id,
+                        StampApplication.page == number,
+                    )
+                )
+            ]
         with tempfile.TemporaryDirectory(prefix="docuflow-preview-") as folder:
             path = Path(folder) / "source"
             self._fetch(principal, binary, path)
@@ -168,6 +209,7 @@ class PreviewService:
                 if binary.mime == "application/pdf"
                 else self._image_frame(path, number, width)
             )
+        draw_stamps(image, marks)
         buffer = io.BytesIO()
         image.save(buffer, format="PNG", optimize=False)
         if width > THUMBNAIL_WIDTH:

@@ -32,6 +32,7 @@ from docuflow.modules.indexing.models import DocumentType
 from docuflow.modules.notifications.service import add_notification, schedule_task_timers
 from docuflow.modules.repository.models import Document
 from docuflow.modules.repository.service import RepositoryService
+from docuflow.modules.signatures.service import record_approval
 from docuflow.modules.workflow.models import (
     Delegation,
     Workflow,
@@ -612,6 +613,16 @@ class WorkflowService:
         step.decided_by = principal.user_id
         step.decided_at = now
         step.comment = comment or None
+        if step.kind == "approval":
+            record_approval(
+                session,
+                principal.tenant_id,
+                document,
+                principal.user_id,
+                decision,
+                comment or None,
+                step.id,
+            )
         task = session.get(Task, step.task_id) if step.task_id else None
         if task is not None:
             task.status = "done"

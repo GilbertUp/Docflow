@@ -34,6 +34,8 @@ from docuflow.modules.repository.api import router as repository_router
 from docuflow.modules.repository.service import RepositoryService
 from docuflow.modules.search.api import router as search_router
 from docuflow.modules.search.service import SearchService
+from docuflow.modules.signatures.api import router as signatures_router
+from docuflow.modules.signatures.service import SignatureService
 from docuflow.modules.workflow.api import router as workflow_router
 from docuflow.modules.workflow.service import WorkflowService
 from docuflow.platform import context
@@ -91,6 +93,7 @@ def install(app: FastAPI, services: Services) -> ApiContext:
     app.state.collaboration = CollaborationService(services.audit, ctx.policy, app.state.repo)
     app.state.workflow = WorkflowService(services.audit, ctx.policy, app.state.repo)
     app.state.forms = FormService(services.audit, ctx.policy, app.state.repo)
+    app.state.signatures = SignatureService(services.audit, ctx.policy, app.state.repo)
     app.state.notification_settings = NotificationService(services.audit, ctx.policy)
     app.include_router(router)
     app.include_router(repository_router)
@@ -100,6 +103,7 @@ def install(app: FastAPI, services: Services) -> ApiContext:
     app.include_router(collaboration_router)
     app.include_router(workflow_router)
     app.include_router(forms_router)
+    app.include_router(signatures_router)
     app.include_router(notifications_router)
 
     @app.exception_handler(DomainError)

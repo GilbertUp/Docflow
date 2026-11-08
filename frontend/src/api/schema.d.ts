@@ -487,6 +487,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/documents/{document_id}/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Approvals */
+        get: operations["list_approvals_api_v1_documents__document_id__approvals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/documents/{document_id}/assignable": {
         parameters: {
             query?: never;
@@ -696,6 +713,62 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{document_id}/signatures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Signatures */
+        get: operations["list_signatures_api_v1_documents__document_id__signatures_get"];
+        put?: never;
+        /**
+         * Sign Document
+         * @description Signs the current version as an internal attestation. Needs the password again.
+         */
+        post: operations["sign_document_api_v1_documents__document_id__signatures_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{document_id}/stamps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Document Stamps */
+        get: operations["document_stamps_api_v1_documents__document_id__stamps_get"];
+        put?: never;
+        /** Apply Stamp */
+        post: operations["apply_stamp_api_v1_documents__document_id__stamps_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{document_id}/stamps/{application_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove Stamp */
+        delete: operations["remove_stamp_api_v1_documents__document_id__stamps__application_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1408,6 +1481,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/signatures/{signature_id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke Signature */
+        post: operations["revoke_signature_api_v1_signatures__signature_id__revoke_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sla-policy": {
         parameters: {
             query?: never;
@@ -1424,6 +1514,41 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stamps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Stamps */
+        get: operations["list_stamps_api_v1_stamps_get"];
+        put?: never;
+        /** Create Stamp */
+        post: operations["create_stamp_api_v1_stamps_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stamps/{stamp_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Stamp */
+        patch: operations["update_stamp_api_v1_stamps__stamp_id__patch"];
         trace?: never;
     };
     "/api/v1/tasks": {
@@ -1774,6 +1899,77 @@ export interface components {
              */
             service_user_id: string;
         };
+        /** AppliedStampOut */
+        AppliedStampOut: {
+            /** Applied By */
+            applied_by: string;
+            /** Color */
+            color: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Current */
+            current: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Page */
+            page: number;
+            /** Text */
+            text: string;
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+        };
+        /** ApplyStampRequest */
+        ApplyStampRequest: {
+            /** Page */
+            page: number;
+            /**
+             * Stamp Id
+             * Format: uuid
+             */
+            stamp_id: string;
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+        };
+        /** ApprovalOut */
+        ApprovalOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Current */
+            current: boolean;
+            /**
+             * Decider Id
+             * Format: uuid
+             */
+            decider_id: string;
+            /** Decider Name */
+            decider_name: string;
+            /** Decision */
+            decision: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Reason */
+            reason: string | null;
+            /** Version Hash */
+            version_hash: string;
+            /** Version Number */
+            version_number: number;
+        };
         /** CabinetDetail */
         CabinetDetail: {
             cabinet: components["schemas"]["CabinetOut"];
@@ -1940,6 +2136,19 @@ export interface components {
             name: string;
             /** Permissions */
             permissions?: string[];
+        };
+        /** CreateStampRequest */
+        CreateStampRequest: {
+            /**
+             * Color
+             * @default red
+             * @enum {string}
+             */
+            color: "red" | "green" | "blue" | "black";
+            /** Name */
+            name: string;
+            /** Text */
+            text: string;
         };
         /** CreateTaskRequest */
         CreateTaskRequest: {
@@ -2813,6 +3022,11 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** RevokeRequest */
+        RevokeRequest: {
+            /** Reason */
+            reason: string;
+        };
         /** RoleHolderRequest */
         RoleHolderRequest: {
             /** Group Id */
@@ -2915,6 +3129,62 @@ export interface components {
             /** Reminder Before Hours */
             reminder_before_hours: number;
         };
+        /** SetStampStatusRequest */
+        SetStampStatusRequest: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "archived";
+        };
+        /** SignRequest */
+        SignRequest: {
+            /** Password */
+            password: string;
+            /**
+             * Statement
+             * @default
+             */
+            statement: string;
+        };
+        /** SignatureOut */
+        SignatureOut: {
+            /** Bound Hash */
+            bound_hash: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Current */
+            current: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Intact */
+            intact: boolean;
+            /** Kind */
+            kind: string;
+            /** Revoked At */
+            revoked_at: string | null;
+            /** Revoked Reason */
+            revoked_reason: string | null;
+            /**
+             * Signer Id
+             * Format: uuid
+             */
+            signer_id: string;
+            /** Signer Name */
+            signer_name: string;
+            /** Statement */
+            statement: string;
+            /** Status */
+            status: string;
+            /** Version Number */
+            version_number: number;
+        };
         /** SlaOut */
         SlaOut: {
             /** Escalate After Hours */
@@ -2925,6 +3195,22 @@ export interface components {
             escalate_to_user_id: string | null;
             /** Reminder Before Hours */
             reminder_before_hours: number;
+        };
+        /** StampOut */
+        StampOut: {
+            /** Color */
+            color: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Status */
+            status: string;
+            /** Text */
+            text: string;
         };
         /** StartWorkflowRequest */
         StartWorkflowRequest: {
@@ -4473,6 +4759,37 @@ export interface operations {
             };
         };
     };
+    list_approvals_api_v1_documents__document_id__approvals_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     assignable_api_v1_documents__document_id__assignable_get: {
         parameters: {
             query?: never;
@@ -4912,6 +5229,168 @@ export interface operations {
                 content: {
                     "application/json": unknown;
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_signatures_api_v1_documents__document_id__signatures_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignatureOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sign_document_api_v1_documents__document_id__signatures_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignatureOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    document_stamps_api_v1_documents__document_id__stamps_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppliedStampOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    apply_stamp_api_v1_documents__document_id__stamps_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplyStampRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppliedStampOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_stamp_api_v1_documents__document_id__stamps__application_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -6516,6 +6995,41 @@ export interface operations {
             };
         };
     };
+    revoke_signature_api_v1_signatures__signature_id__revoke_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                signature_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevokeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignatureOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_sla_api_v1_sla_policy_get: {
         parameters: {
             query?: never;
@@ -6556,6 +7070,105 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SlaOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_stamps_api_v1_stamps_get: {
+        parameters: {
+            query?: {
+                include_archived?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StampOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_stamp_api_v1_stamps_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateStampRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StampOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_stamp_api_v1_stamps__stamp_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                stamp_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetStampStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StampOut"];
                 };
             };
             /** @description Validation Error */

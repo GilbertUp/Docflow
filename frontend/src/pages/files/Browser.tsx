@@ -29,6 +29,7 @@ import { DetailsDialog } from "./DetailsDialog";
 import { DiscussionDialog } from "./DiscussionDialog";
 import { LinksDialog } from "./LinksDialog";
 import { PreviewDialog } from "./PreviewDialog";
+import { SignDialog } from "./SignDialog";
 import { WorkflowDialog } from "./WorkflowDialog";
 import { TextDialog } from "./TextDialog";
 import { VersionsDialog } from "./VersionsDialog";
@@ -57,6 +58,7 @@ type DialogState =
   | { kind: "links"; id: string; title: string }
   | { kind: "discuss"; id: string; title: string }
   | { kind: "workflow"; id: string; title: string }
+  | { kind: "sign"; id: string; title: string }
   | { kind: "details"; id: string; title: string }
   | null;
 
@@ -528,6 +530,15 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
                           type="button"
                           className="btn btn-quiet"
                           onClick={() =>
+                            setDialog({ kind: "sign", id: document.id, title: document.title })
+                          }
+                        >
+                          Sign<span className="sr-only"> {document.title}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-quiet"
+                          onClick={() =>
                             setDialog({ kind: "workflow", id: document.id, title: document.title })
                           }
                         >
@@ -668,6 +679,15 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
           onClose={() => setDialog(null)}
         />
       ) : null}
+      {dialog?.kind === "sign" ? (
+        <SignDialog
+          documentId={dialog.id}
+          title={dialog.title}
+          canSign={can("preview") && !archived}
+          userId={me?.user.id ?? ""}
+          onClose={() => setDialog(null)}
+        />
+      ) : null}
       {dialog?.kind === "workflow" ? (
         <WorkflowDialog
           documentId={dialog.id}
@@ -695,7 +715,12 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
         />
       ) : null}
       {dialog?.kind === "preview" ? (
-        <PreviewDialog documentId={dialog.id} title={dialog.title} onClose={() => setDialog(null)} />
+        <PreviewDialog
+          documentId={dialog.id}
+          title={dialog.title}
+          canStamp={can("annotate") && !archived}
+          onClose={() => setDialog(null)}
+        />
       ) : null}
       {dialog?.kind === "text" ? (
         <TextDialog

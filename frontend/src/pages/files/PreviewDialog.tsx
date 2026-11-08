@@ -1,8 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { api } from "../../api/client";
-import type { PreviewInfo } from "../../api/types";
+import type { AppliedStamp, PreviewInfo, StampRow } from "../../api/types";
 import { Dialog, ErrorNotice, Notice, Spinner } from "../../components/ui";
 
 const ZOOMS = [
@@ -12,8 +12,26 @@ const ZOOMS = [
 ];
 
 /** Address of a page image. The server renders it, so the file itself never reaches the browser. */
-export function pageUrl(documentId: string, number: number, width: number): string {
-  return `/api/v1/documents/${documentId}/preview/pages/${number}?width=${width}`;
+export function pageUrl(
+  documentId: string,
+  number: number,
+  width: number,
+  nonce?: number,
+): string {
+  const base = `/api/v1/documents/${documentId}/preview/pages/${number}?width=${width}`;
+  return nonce === undefined ? base : `${base}&v=${nonce}`;
+}
+
+/** Where a click landed on an image, as shares of its width and height from the top left. */
+export function shareOf(
+  click: { x: number; y: number },
+  box: { left: number; top: number; width: number; height: number },
+): { x: number; y: number } {
+  const clamp = (value: number) => Math.min(1, Math.max(0, value));
+  return {
+    x: clamp((click.x - box.left) / Math.max(1, box.width)),
+    y: clamp((click.y - box.top) / Math.max(1, box.height)),
+  };
 }
 
 /** Clamps a page number into the pages that exist. */
@@ -25,12 +43,16 @@ export function clampPage(number: number, total: number): number {
 export function PreviewDialog({
   documentId,
   title,
+  canStamp = false,
   onClose,
 }: {
   documentId: string;
   title: string;
+  canStamp?: boolean;
   onClose: () => void;
 }) {
+  const queryClient = useQueryClient();
+  const [stampId, setStampId] = useState("");
   const [page, setPage] = useState(1);
   const [zoom, setZoom] = useState(0);
   const info = useQuery({
@@ -38,9 +60,31 @@ export function PreviewDialog({
     queryFn: () => api.get<PreviewInfo>(`/documents/${documentId}/preview`),
     retry: false,
   });
+  const stamps = useQuery({
+    queryKey: ["stamps"],
+    enabled: canStamp,
+    queryFn: () => api.get<StampRow[]>("/stamps"),
+  });
+  const applied = useQuery({
+    queryKey: ["applied-stamps", documentId],
+    queryFn: () => api.get<AppliedStamp[]>(`/documents/${documentId}/stamps`),
+  });
+  const reloadStamps = () =>
+    void queryClient.invalidateQueries({ queryKey: ["applied-stamps", documentId] });
+  const place = useMutation({
+    mutationFn: (where: { x: number; y: number }) =>
+      api.post(`/documents/${documentId}/stamps`, { stamp_id: stampId, page, ...where }),
+    onSuccess: reloadStamps,
+  });
+  const unplace = useMutation({
+    mutationFn: (id: string) => api.delete(`/documents/${documentId}/stamps/${id}`),
+    onSuccess: reloadStamps,
+  });
   const total = info.data?.pages.length ?? 0;
   const current = clampPage(page, total);
   const width = ZOOMS[zoom]?.width ?? 800;
+  const here = (applied.data ?? []).filter((item) => item.page === page && item.current);
+  const nonce = (applied.data ?? []).length;
 
   return (
     <Dialog title={`View ${title}`} onClose={onClose} wide>
@@ -88,6 +132,40 @@ export function PreviewDialog({
               </select>
             </label>
           </div>
+          {canStamp ? (
+            <div className="toolbar">
+              <label>
+                Stamp{" "}
+                <select value={stampId} onChange={(event) => setStampId(event.target.value)}>
+                  <option value="">None, just look</option>
+                  {(stamps.data ?? []).map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.text}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {stampId ? <span className="muted">Click the page where it should go.</span> : null}
+            </div>
+          ) : null}
+          <ErrorNotice error={place.error ?? unplace.error} />
+          {here.length > 0 ? (
+            <ul className="plain-list">
+              {here.map((item) => (
+                <li key={item.id}>
+                  {item.text} on this page, by {item.applied_by}
+                  <button
+                    type="button"
+                    className="btn btn-quiet"
+                    disabled={unplace.isPending}
+                    onClick={() => unplace.mutate(item.id)}
+                  >
+                    Remove<span className="sr-only"> the {item.text} stamp</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
           <div className="preview-body">
             {total > 1 ? (
               <nav aria-label="Pages" className="preview-thumbs">
@@ -112,9 +190,17 @@ export function PreviewDialog({
             ) : null}
             <div className="preview-page">
               <img
-                key={`${current}-${width}`}
-                src={pageUrl(documentId, current, width)}
+                key={`${current}-${width}-${nonce}`}
+                src={pageUrl(documentId, current, width, nonce)}
                 alt={`Page ${current} of ${title}`}
+                className={stampId ? "placing" : undefined}
+                onClick={(event) => {
+                  if (!stampId) return;
+                  const box = event.currentTarget.getBoundingClientRect();
+                  place.mutate(
+                    shareOf({ x: event.clientX, y: event.clientY }, box),
+                  );
+                }}
               />
             </div>
           </div>

@@ -41,14 +41,23 @@ def set_job(db: Database, tenant: uuid.UUID, job_id: uuid.UUID, **values: Any) -
         session.execute(update(ProcessingJob).where(ProcessingJob.id == job_id).values(**values))
 
 
-def quiet_other_tenants(db: Database, tenant: uuid.UUID) -> None:
-    """Other tests leave queued jobs behind. A tick takes at most one batch of them across every
-    organization, so mark them as sent to keep this test about its own job."""
+@pytest.fixture(autouse=True)
+def isolate_from_other_tests(db: Database, tenant: uuid.UUID) -> None:
+    """Other tests leave unsent outbox rows and queued jobs behind. The dispatcher and the
+    maintenance pass each take one batch across every organization, so a big enough backlog
+    would crowd out what these tests make. Mark the others as handled so each test is about its
+    own rows. Real backlogs drain over later passes, which is what these batches are for."""
+    now = utcnow()
     with db.platform_session() as session:
+        session.execute(
+            update(Outbox)
+            .where(Outbox.tenant_id != tenant, Outbox.published_at.is_(None))
+            .values(published_at=now)
+        )
         session.execute(
             update(ProcessingJob)
             .where(ProcessingJob.tenant_id != tenant, ProcessingJob.status == "queued")
-            .values(dispatched_at=utcnow())
+            .values(dispatched_at=now)
         )
 
 
@@ -233,7 +242,6 @@ def test_lost_broker_message_is_redispatched(
 ) -> None:
     job_id = make_job(db, tenant)
     set_job(db, tenant, job_id, dispatched_at=utcnow() - timedelta(minutes=10))
-    quiet_other_tenants(db, tenant)
     Maintenance(db, audit, 60).redispatch_queued()
     with db.tenant_session(tenant) as session:
         assert len(session.scalars(select(Outbox)).all()) == 2
@@ -244,7 +252,6 @@ def test_due_retry_is_redispatched_only_when_due(
 ) -> None:
     job_id = make_job(db, tenant)
     set_job(db, tenant, job_id, dispatched_at=None, next_run_at=utcnow() + timedelta(hours=1))
-    quiet_other_tenants(db, tenant)
     Maintenance(db, audit, 60).redispatch_queued()
     with db.tenant_session(tenant) as session:
         assert len(session.scalars(select(Outbox)).all()) == 1
