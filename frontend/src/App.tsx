@@ -13,7 +13,9 @@ import { Browser } from "./pages/files/Browser";
 import { CabinetsOverview, FilesLayout } from "./pages/files/FilesLayout";
 import { Login } from "./pages/Login";
 import { ForcedPasswordChange } from "./pages/PasswordChange";
+import { Notifications } from "./pages/Notifications";
 import { Search } from "./pages/Search";
+import { Tasks } from "./pages/Tasks";
 
 /** Everything except the sign-in page needs a session, and a new user must pick a password. */
 function RequireAuth() {
@@ -52,6 +54,8 @@ export function App() {
             <Route path="folders/:id" element={<Browser key="folder" kind="folder" />} />
           </Route>
           <Route path="search" element={<Search />} />
+          <Route path="tasks" element={<Tasks />} />
+          <Route path="notifications" element={<Notifications />} />
           <Route path="admin/users" element={<Users />} />
           <Route path="admin/groups" element={<Groups />} />
           <Route path="admin/roles" element={<Roles />} />

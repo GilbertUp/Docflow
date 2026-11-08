@@ -780,3 +780,24 @@ textarea {
   align-items: center;
   flex-wrap: wrap;
 }
+
+/* Discussion and notifications */
+.task-list,
+.comment-list,
+.notification-list {
+  list-style: none;
+  padding: 0;
+}
+.task-list li,
+.comment-list li,
+.notification-list li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border, #d0d4dc);
+}
+.notification-list li.unread {
+  font-weight: 600;
+}
+.comment-list p {
+  margin: 0.25rem 0;
+  white-space: pre-wrap;
+}

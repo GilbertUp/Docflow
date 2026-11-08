@@ -1,10 +1,21 @@
+import { useQuery } from "@tanstack/react-query";
 import { NavLink, Outlet } from "react-router-dom";
+
+import { api } from "../api/client";
+import type { NotificationList } from "../api/types";
 
 import { useAuth } from "../auth/AuthContext";
 
 export function Layout() {
   const { me, can, logout } = useAuth();
   const canSeePeople = can("users.manage") || can("groups.manage");
+  const notifications = useQuery({
+    queryKey: ["notifications", "count"],
+    queryFn: () => api.get<NotificationList>("/notifications", { query: { limit: 1 } }),
+    refetchInterval: 60_000,
+    retry: false,
+  });
+  const unread = notifications.data?.unread ?? 0;
 
   return (
     <div className="shell">
@@ -18,6 +29,15 @@ export function Layout() {
         <nav className="topnav" aria-label="Main">
           <NavLink to="/files">Files</NavLink>
           <NavLink to="/search">Search</NavLink>
+          <NavLink to="/tasks">Tasks</NavLink>
+          <NavLink to="/notifications">
+            Notifications
+            {unread > 0 ? (
+              <span className="badge badge-warn" aria-label={`${unread} unread`}>
+                {unread}
+              </span>
+            ) : null}
+          </NavLink>
           {canSeePeople ? <NavLink to="/admin/users">Users</NavLink> : null}
           {canSeePeople ? <NavLink to="/admin/groups">Groups</NavLink> : null}
           {canSeePeople || can("security.admin") ? <NavLink to="/admin/roles">Roles</NavLink> : null}

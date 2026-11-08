@@ -10,6 +10,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
+from docuflow.modules.collaboration.api import router as collaboration_router
+from docuflow.modules.collaboration.service import CollaborationService
 from docuflow.modules.documents.api import router as documents_router
 from docuflow.modules.documents.relationships import RelationshipService
 from docuflow.modules.documents.wiring import build_documents
@@ -80,11 +82,13 @@ def install(app: FastAPI, services: Services) -> ApiContext:
     app.state.indexing = IndexingService(services.audit, ctx.policy, app.state.repo)
     app.state.suggestions = SuggestionService(services.audit, ctx.policy, app.state.repo)
     app.state.search = SearchService(services.audit, ctx.policy)
+    app.state.collaboration = CollaborationService(services.audit, ctx.policy, app.state.repo)
     app.include_router(router)
     app.include_router(repository_router)
     app.include_router(documents_router)
     app.include_router(indexing_router)
     app.include_router(search_router)
+    app.include_router(collaboration_router)
 
     @app.exception_handler(DomainError)
     async def domain_error(request: Request, exc: DomainError) -> JSONResponse:

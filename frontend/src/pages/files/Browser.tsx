@@ -25,6 +25,7 @@ import {
 import { AclDialog } from "./AclDialog";
 import { ImportPanel } from "./ImportPanel";
 import { DetailsDialog } from "./DetailsDialog";
+import { DiscussionDialog } from "./DiscussionDialog";
 import { LinksDialog } from "./LinksDialog";
 import { PreviewDialog } from "./PreviewDialog";
 import { TextDialog } from "./TextDialog";
@@ -52,6 +53,7 @@ type DialogState =
   | { kind: "text"; id: string; title: string }
   | { kind: "preview"; id: string; title: string }
   | { kind: "links"; id: string; title: string }
+  | { kind: "discuss"; id: string; title: string }
   | { kind: "details"; id: string; title: string }
   | null;
 
@@ -522,6 +524,15 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
                           type="button"
                           className="btn btn-quiet"
                           onClick={() =>
+                            setDialog({ kind: "discuss", id: document.id, title: document.title })
+                          }
+                        >
+                          Discuss<span className="sr-only"> {document.title}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-quiet"
+                          onClick={() =>
                             setDialog({ kind: "links", id: document.id, title: document.title })
                           }
                         >
@@ -641,6 +652,15 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
           documentId={dialog.id}
           title={dialog.title}
           canEdit={can("edit_metadata") && !archived}
+          onClose={() => setDialog(null)}
+        />
+      ) : null}
+      {dialog?.kind === "discuss" ? (
+        <DiscussionDialog
+          documentId={dialog.id}
+          title={dialog.title}
+          canComment={can("annotate") && !archived}
+          canAssign={can("edit_metadata") && !archived}
           onClose={() => setDialog(null)}
         />
       ) : null}
