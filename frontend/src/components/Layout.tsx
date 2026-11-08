@@ -47,6 +47,7 @@ export function Layout() {
             <NavLink to="/admin/document-types">Document types</NavLink>
           ) : null}
           <NavLink to="/admin/workflows">Workflows</NavLink>
+          {can("admin.operate") ? <NavLink to="/admin/operations">Operations</NavLink> : null}
           {can("audit.read") ? <NavLink to="/admin/audit">Audit trail</NavLink> : null}
           {can("retention.manage") ? <NavLink to="/admin/retention">Retention</NavLink> : null}
           {can("forms.manage") ? <NavLink to="/admin/forms">Manage forms</NavLink> : null}

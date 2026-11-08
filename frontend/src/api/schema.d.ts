@@ -22,6 +22,103 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Analytics
+         * @description Counts for the whole organization. Needs admin.operate.
+         */
+        get: operations["analytics_api_v1_admin_analytics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Health
+         * @description Whether the parts respond and whether work is piling up.
+         */
+        get: operations["health_api_v1_admin_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Jobs
+         * @description Jobs, newest first. Payloads are never shown.
+         */
+        get: operations["list_jobs_api_v1_admin_jobs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/jobs/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Job Summary */
+        get: operations["job_summary_api_v1_admin_jobs_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/jobs/{job_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retry Job
+         * @description Starts a fresh round of attempts for a job that failed or gave up.
+         */
+        post: operations["retry_job_api_v1_admin_jobs__job_id__retry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/api-keys": {
         parameters: {
             query?: never;
@@ -2239,6 +2336,53 @@ export interface components {
              */
             document_id: string;
         };
+        /** AnalyticsOut */
+        AnalyticsOut: {
+            /** Active Users */
+            active_users: number;
+            /** Archived Documents */
+            archived_documents: number;
+            /** By Cabinet */
+            by_cabinet: components["schemas"]["CountOut"][];
+            /** By Type */
+            by_type: components["schemas"]["CountOut"][];
+            /** Copy Bytes */
+            copy_bytes: number;
+            /** Days */
+            days: number;
+            /** Disabled Users */
+            disabled_users: number;
+            /** Disposals In Period */
+            disposals_in_period: number;
+            /** Documents */
+            documents: number;
+            /** Documents On Hold */
+            documents_on_hold: number;
+            /** Open Tasks */
+            open_tasks: number;
+            /** Overdue Tasks */
+            overdue_tasks: number;
+            /** Questions */
+            questions: components["schemas"]["DayOut"][];
+            /** Searches */
+            searches: components["schemas"]["DayOut"][];
+            /** Stored Bytes */
+            stored_bytes: number;
+            /** Text States */
+            text_states: {
+                [key: string]: number;
+            };
+            /** Untyped Documents */
+            untyped_documents: number;
+            /** Uploads */
+            uploads: components["schemas"]["DayOut"][];
+            /** Versions */
+            versions: number;
+            /** Workflows */
+            workflows: {
+                [key: string]: number;
+            };
+        };
         /** AnchorOut */
         AnchorOut: {
             /**
@@ -2552,6 +2696,15 @@ export interface components {
             /** New Password */
             new_password: string;
         };
+        /** CheckOut */
+        CheckOut: {
+            /** Detail */
+            detail: string;
+            /** Name */
+            name: string;
+            /** Ok */
+            ok: boolean;
+        };
         /** ChildrenOut */
         ChildrenOut: {
             documents: components["schemas"]["Page_DocumentOut_"];
@@ -2633,6 +2786,15 @@ export interface components {
             folder: components["schemas"]["FolderOut"];
             /** Skipped */
             skipped: number;
+        };
+        /** CountOut */
+        CountOut: {
+            /** Bytes */
+            bytes: number;
+            /** Count */
+            count: number;
+            /** Name */
+            name: string;
         };
         /** CreateApiKeyRequest */
         CreateApiKeyRequest: {
@@ -2823,6 +2985,16 @@ export interface components {
             kind: "cabinet" | "folder";
             /** Name */
             name: string;
+        };
+        /** DayOut */
+        DayOut: {
+            /** Count */
+            count: number;
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
         };
         /** DecisionRequest */
         DecisionRequest: {
@@ -3195,6 +3367,13 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** HealthOut */
+        HealthOut: {
+            /** Checks */
+            checks: components["schemas"]["CheckOut"][];
+            /** Ok */
+            ok: boolean;
+        };
         /** HeldDocumentOut */
         HeldDocumentOut: {
             /**
@@ -3420,6 +3599,48 @@ export interface components {
             version: number;
             /** Workflow Name */
             workflow_name: string;
+        };
+        /** JobOut */
+        JobOut: {
+            /** Attempts */
+            attempts: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Error */
+            error: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Max Attempts */
+            max_attempts: number;
+            /** Progress */
+            progress: number;
+            /** Queue */
+            queue: string;
+            /** Status */
+            status: string;
+            /** Type */
+            type: string;
+        };
+        /** JobSummaryOut */
+        JobSummaryOut: {
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+            /** Dead Types */
+            dead_types: components["schemas"]["CountOut"][];
+            /** Queued Oldest Seconds */
+            queued_oldest_seconds: number | null;
+            /** Waiting Types */
+            waiting_types: components["schemas"]["CountOut"][];
         };
         /** LanguagesOut */
         LanguagesOut: {
@@ -4514,6 +4735,142 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    analytics_api_v1_admin_analytics_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalyticsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    health_api_v1_admin_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HealthOut"];
+                };
+            };
+        };
+    };
+    list_jobs_api_v1_admin_jobs_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                type?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    job_summary_api_v1_admin_jobs_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobSummaryOut"];
+                };
+            };
+        };
+    };
+    retry_job_api_v1_admin_jobs__job_id__retry_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobOut"];
+                };
             };
             /** @description Validation Error */
             422: {

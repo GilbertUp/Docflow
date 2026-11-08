@@ -10,6 +10,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
+from docuflow.modules.admin.api import router as admin_router
+from docuflow.modules.admin.service import AdminService
 from docuflow.modules.assistant.api import router as assistant_router
 from docuflow.modules.assistant.providers import build_provider
 from docuflow.modules.assistant.service import AssistantService
@@ -102,6 +104,7 @@ def install(app: FastAPI, services: Services) -> ApiContext:
     app.state.collaboration = CollaborationService(services.audit, ctx.policy, app.state.repo)
     app.state.workflow = WorkflowService(services.audit, ctx.policy, app.state.repo)
     app.state.forms = FormService(services.audit, ctx.policy, app.state.repo)
+    app.state.admin = AdminService(services.audit, ctx.policy)
     app.state.assistant = AssistantService(
         services.audit, ctx.policy, app.state.repo, build_provider(services.settings)
     )
@@ -122,6 +125,7 @@ def install(app: FastAPI, services: Services) -> ApiContext:
     app.include_router(collaboration_router)
     app.include_router(workflow_router)
     app.include_router(forms_router)
+    app.include_router(admin_router)
     app.include_router(assistant_router)
     app.include_router(compression_router)
     app.include_router(audit_router)

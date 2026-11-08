@@ -118,6 +118,19 @@ def _add_dispatch(session: Session, tenant_id: uuid.UUID, job_id: uuid.UUID, que
     )
 
 
+def requeue(session: Session, job: ProcessingJob) -> None:
+    """Gives a job that failed or gave up a fresh round of attempts, and sends it to a worker."""
+    job.status = "queued"
+    job.attempts = 0
+    job.progress = 0
+    job.next_run_at = utcnow()
+    job.dispatched_at = None
+    job.heartbeat_at = None
+    job.finished_at = None
+    session.flush()
+    _add_dispatch(session, job.tenant_id, job.id, job.queue)
+
+
 class JobRunner:
     """Runs one delivered job. Called by the Celery task, and directly by tests."""
 

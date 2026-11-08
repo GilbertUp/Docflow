@@ -63,6 +63,10 @@ export type AuditVerification = S["VerifyOut"];
 export type CompressionRun = S["DerivativeOut"];
 export type AssistantAnswer = S["AssistantAnswerOut"];
 export type AssistantSettings = S["AssistantSettingsOut"];
+export type AdminAnalytics = S["AnalyticsOut"];
+export type AdminHealth = S["HealthOut"];
+export type AdminJob = S["JobOut"];
+export type JobSummary = S["JobSummaryOut"];
 export type Suggestions = S["SuggestionsOut"];
 export type SuggestedField = S["SuggestedFieldOut"];
 export type LanguageList = S["LanguagesOut"];
@@ -114,6 +118,7 @@ export const SYSTEM_PERMISSIONS = [
   ["integrations.manage", "Manage API keys and identity providers"],
   ["document_types.manage", "Create document types and change their fields"],
   ["workflows.manage", "Create workflows and change their steps"],
+  ["admin.operate", "See usage and the job monitor, and retry failed jobs"],
   ["retention.manage", "Set retention classes and legal holds"],
   ["forms.manage", "Create forms and see every submission"],
 ] as const;
