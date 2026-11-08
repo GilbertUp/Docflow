@@ -105,3 +105,31 @@ class PreviewOut(BaseModel):
     kind: str
     mime: str
     pages: list[PreviewPageOut]
+
+
+class LinkTypeOut(BaseModel):
+    type: str
+    from_wording: str
+    to_wording: str
+    symmetric: bool
+
+
+class LinkedDocumentOut(BaseModel):
+    id: uuid.UUID
+    title: str
+    cabinet_id: uuid.UUID
+    folder_id: uuid.UUID | None
+
+
+class LinkOut(BaseModel):
+    id: uuid.UUID
+    relation_type: str
+    wording: str
+    direction: str
+    document: LinkedDocumentOut
+    can_remove: bool
+
+
+class AddLinkRequest(BaseModel):
+    to_document_id: uuid.UUID
+    relation_type: str

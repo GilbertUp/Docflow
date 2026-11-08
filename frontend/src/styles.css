@@ -767,3 +767,16 @@ textarea {
   background: #ffe58a;
   color: inherit;
 }
+
+/* Links */
+.link-list {
+  list-style: none;
+  padding: 0;
+}
+.link-list li {
+  padding: 0.4rem 0;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}

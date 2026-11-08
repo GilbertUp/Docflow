@@ -154,3 +154,32 @@ class OcrResult(IdMixin, TimestampMixin, Base):
     boxes: Mapped[list[dict[str, object]]] = mapped_column(JSONB, default=list)
     confidence: Mapped[float | None] = mapped_column(Float)
     duration_ms: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class DocumentRelationship(IdMixin, TimestampMixin, Base):
+    """A typed link from one document to another, such as an invoice to its purchase order.
+
+    The link is stored once, in the direction it was made. Reading a document shows both the
+    links it makes and the links made to it, each worded for the side being read.
+    """
+
+    __tablename__ = "document_relationship"
+    __table_args__ = (
+        UniqueConstraint(
+            "from_document_id", "to_document_id", "relation_type", name="uq_document_relationship"
+        ),
+        CheckConstraint("from_document_id <> to_document_id", name="not_self"),
+        CheckConstraint(
+            "relation_type IN ('related', 'supersedes', 'responds_to', 'attached_to')",
+            name="relation_type",
+        ),
+        Index("ix_document_relationship_to", "tenant_id", "to_document_id"),
+    )
+
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"))
+    from_document_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("document.id", ondelete="CASCADE")
+    )
+    to_document_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("document.id", ondelete="CASCADE"))
+    relation_type: Mapped[str] = mapped_column(String(30))
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))

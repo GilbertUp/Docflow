@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
 from docuflow.modules.documents.api import router as documents_router
+from docuflow.modules.documents.relationships import RelationshipService
 from docuflow.modules.documents.wiring import build_documents
 from docuflow.modules.identity.api import (
     MUST_CHANGE_CODE,
@@ -75,6 +76,7 @@ def install(app: FastAPI, services: Services) -> ApiContext:
     built = build_documents(services, app.state.repo, ctx.policy)
     app.state.documents, app.state.imports, app.state.text = built.docs, built.imports, built.text
     app.state.preview = built.preview
+    app.state.relationships = RelationshipService(services.audit, ctx.policy, app.state.repo)
     app.state.indexing = IndexingService(services.audit, ctx.policy, app.state.repo)
     app.state.suggestions = SuggestionService(services.audit, ctx.policy, app.state.repo)
     app.state.search = SearchService(services.audit, ctx.policy)

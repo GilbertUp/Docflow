@@ -339,6 +339,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/document-link-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Link Types */
+        get: operations["link_types_api_v1_document_link_types_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/document-types": {
         parameters: {
             query?: never;
@@ -471,6 +488,44 @@ export interface paths {
         put: operations["set_index_api_v1_documents__document_id__index_put"];
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{document_id}/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Links
+         * @description Links this document makes and links made to it, to documents the caller may read.
+         */
+        get: operations["list_links_api_v1_documents__document_id__links_get"];
+        put?: never;
+        /** Add Link */
+        post: operations["add_link_api_v1_documents__document_id__links_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{document_id}/links/{link_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove Link */
+        delete: operations["remove_link_api_v1_documents__document_id__links__link_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -648,6 +703,26 @@ export interface paths {
         get: operations["download_version_api_v1_documents__document_id__versions__number__download_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{document_id}/versions/{number}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore Version
+         * @description Makes an earlier version current by adding it again as a new version.
+         */
+        post: operations["restore_version_api_v1_documents__document_id__versions__number__restore_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1111,6 +1186,16 @@ export interface components {
             anchor_id: string;
             /** Entries */
             entries: components["schemas"]["AclEntryModel"][];
+        };
+        /** AddLinkRequest */
+        AddLinkRequest: {
+            /** Relation Type */
+            relation_type: string;
+            /**
+             * To Document Id
+             * Format: uuid
+             */
+            to_document_id: string;
         };
         /** AnchorOut */
         AnchorOut: {
@@ -1658,6 +1743,51 @@ export interface components {
             languages: string[];
             /** Max Per Run */
             max_per_run: number;
+        };
+        /** LinkOut */
+        LinkOut: {
+            /** Can Remove */
+            can_remove: boolean;
+            /** Direction */
+            direction: string;
+            document: components["schemas"]["LinkedDocumentOut"];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Relation Type */
+            relation_type: string;
+            /** Wording */
+            wording: string;
+        };
+        /** LinkTypeOut */
+        LinkTypeOut: {
+            /** From Wording */
+            from_wording: string;
+            /** Symmetric */
+            symmetric: boolean;
+            /** To Wording */
+            to_wording: string;
+            /** Type */
+            type: string;
+        };
+        /** LinkedDocumentOut */
+        LinkedDocumentOut: {
+            /**
+             * Cabinet Id
+             * Format: uuid
+             */
+            cabinet_id: string;
+            /** Folder Id */
+            folder_id: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
         };
         /** LoginRequest */
         LoginRequest: {
@@ -2954,6 +3084,26 @@ export interface operations {
             };
         };
     };
+    link_types_api_v1_document_link_types_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkTypeOut"][];
+                };
+            };
+        };
+    };
     list_types_api_v1_document_types_get: {
         parameters: {
             query?: {
@@ -3266,6 +3416,102 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["IndexOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_links_api_v1_documents__document_id__links_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_link_api_v1_documents__document_id__links_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_link_api_v1_documents__document_id__links__link_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+                link_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -3591,6 +3837,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restore_version_api_v1_documents__document_id__versions__number__restore_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+                number: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionResult"];
                 };
             };
             /** @description Validation Error */

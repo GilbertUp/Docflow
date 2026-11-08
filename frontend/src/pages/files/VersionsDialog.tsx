@@ -59,6 +59,16 @@ export function VersionsDialog({
     },
   });
 
+  const restore = useMutation({
+    mutationFn: (number: number) =>
+      api.post<VersionResult>(`/documents/${documentId}/versions/${number}/restore`, {}),
+    onSuccess: (result) => {
+      setAdded(result.version.number);
+      void queryClient.invalidateQueries({ queryKey: ["versions", documentId] });
+      refresh();
+    },
+  });
+
   // Newest first, because that is what people look for.
   const rows = [...(versions.data ?? [])].reverse();
   const current = rows[0]?.number;
@@ -106,6 +116,19 @@ export function VersionsDialog({
                         Download<span className="sr-only"> version {row.number}</span>
                       </a>
                     ) : null}
+                    {canAdd && row.number !== current ? (
+                      <button
+                        type="button"
+                        className="btn btn-quiet"
+                        disabled={restore.isPending}
+                        onClick={() => {
+                          setAdded(null);
+                          restore.mutate(row.number);
+                        }}
+                      >
+                        Restore<span className="sr-only"> version {row.number}</span>
+                      </button>
+                    ) : null}
                   </td>
                 </tr>
               ))}
@@ -114,6 +137,7 @@ export function VersionsDialog({
         </div>
       ) : null}
 
+      <ErrorNotice error={restore.error} />
       {canAdd ? (
         <Form
           onSubmit={() => {

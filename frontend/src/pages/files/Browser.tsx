@@ -25,6 +25,7 @@ import {
 import { AclDialog } from "./AclDialog";
 import { ImportPanel } from "./ImportPanel";
 import { DetailsDialog } from "./DetailsDialog";
+import { LinksDialog } from "./LinksDialog";
 import { PreviewDialog } from "./PreviewDialog";
 import { TextDialog } from "./TextDialog";
 import { VersionsDialog } from "./VersionsDialog";
@@ -50,6 +51,7 @@ type DialogState =
   | { kind: "versions"; id: string; title: string }
   | { kind: "text"; id: string; title: string }
   | { kind: "preview"; id: string; title: string }
+  | { kind: "links"; id: string; title: string }
   | { kind: "details"; id: string; title: string }
   | null;
 
@@ -516,6 +518,15 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
                         >
                           Details<span className="sr-only"> of {document.title}</span>
                         </button>
+                        <button
+                          type="button"
+                          className="btn btn-quiet"
+                          onClick={() =>
+                            setDialog({ kind: "links", id: document.id, title: document.title })
+                          }
+                        >
+                          Links<span className="sr-only"> of {document.title}</span>
+                        </button>
                         {can("preview") ? (
                           <button
                             type="button"
@@ -627,6 +638,14 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
       ) : null}
       {dialog?.kind === "details" ? (
         <DetailsDialog
+          documentId={dialog.id}
+          title={dialog.title}
+          canEdit={can("edit_metadata") && !archived}
+          onClose={() => setDialog(null)}
+        />
+      ) : null}
+      {dialog?.kind === "links" ? (
+        <LinksDialog
           documentId={dialog.id}
           title={dialog.title}
           canEdit={can("edit_metadata") && !archived}

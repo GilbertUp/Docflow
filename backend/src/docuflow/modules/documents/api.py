@@ -15,10 +15,15 @@ from starlette.concurrency import run_in_threadpool
 from docuflow.modules.documents.extraction import ExtractionService
 from docuflow.modules.documents.imports import ImportService, ImportView
 from docuflow.modules.documents.preview import PreviewService
+from docuflow.modules.documents.relationships import RELATION_TYPES, Link, RelationshipService
 from docuflow.modules.documents.schemas import (
+    AddLinkRequest,
     ImportItemOut,
     ImportOut,
     LanguagesOut,
+    LinkedDocumentOut,
+    LinkOut,
+    LinkTypeOut,
     PageTextOut,
     PreviewOut,
     PreviewPageOut,
@@ -59,6 +64,11 @@ def get_preview(request: Request) -> PreviewService:
     return service
 
 
+def get_relationships(request: Request) -> RelationshipService:
+    service: RelationshipService = request.app.state.relationships
+    return service
+
+
 def get_imports(request: Request) -> ImportService:
     service: ImportService = request.app.state.imports
     return service
@@ -68,6 +78,7 @@ Docs = Annotated[DocumentService, Depends(get_documents)]
 Imports = Annotated[ImportService, Depends(get_imports)]
 Text = Annotated[ExtractionService, Depends(get_text)]
 Preview = Annotated[PreviewService, Depends(get_preview)]
+Relations = Annotated[RelationshipService, Depends(get_relationships)]
 Filename = Annotated[str, Query(min_length=1, max_length=300)]
 Reason = Annotated[str, Query(max_length=500)]
 
@@ -380,3 +391,73 @@ def preview_page(
         media_type=image.media_type,
         headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
     )
+
+
+@router.post("/documents/{document_id}/versions/{number}/restore", status_code=201)
+def restore_version(
+    document_id: uuid.UUID, number: int, ctx: Ctx, docs: Docs, who: User_
+) -> VersionResult:
+    """Makes an earlier version current by adding it again as a new version."""
+    db = ctx.services.db
+    added = docs.restore_version(db, who, document_id, number)
+    with db.tenant_session(who.tenant_id) as session:
+        info = next(
+            item
+            for item in docs.versions(session, who, document_id)
+            if item.version.id == added.version.id
+        )
+    return VersionResult(
+        document=DocumentOut.model_validate(added.document),
+        version=_version_out(info),
+        duplicate=False,
+    )
+
+
+def _link(link: Link) -> LinkOut:
+    return LinkOut(
+        id=link.id,
+        relation_type=link.relation_type,
+        wording=link.wording,
+        direction=link.direction,
+        document=LinkedDocumentOut(
+            id=link.other.id,
+            title=link.other.title,
+            cabinet_id=link.other.cabinet_id,
+            folder_id=link.other.folder_id,
+        ),
+        can_remove=link.can_remove,
+    )
+
+
+@router.get("/document-link-types")
+def link_types(who: User_) -> list[LinkTypeOut]:
+    return [
+        LinkTypeOut(type=name, from_wording=a, to_wording=b, symmetric=same)
+        for name, (a, b, same) in RELATION_TYPES.items()
+    ]
+
+
+@router.get("/documents/{document_id}/links")
+def list_links(document_id: uuid.UUID, ctx: Ctx, relations: Relations, who: User_) -> list[LinkOut]:
+    """Links this document makes and links made to it, to documents the caller may read."""
+    with ctx.services.db.tenant_session(who.tenant_id) as session:
+        return [_link(item) for item in relations.list(session, who, document_id)]
+
+
+@router.post("/documents/{document_id}/links", status_code=201)
+def add_link(
+    document_id: uuid.UUID, body: AddLinkRequest, ctx: Ctx, relations: Relations, who: User_
+) -> LinkOut:
+    with ctx.services.db.tenant_session(who.tenant_id) as session:
+        return _link(
+            relations.add(session, who, document_id, body.to_document_id, body.relation_type)
+        )
+
+
+@router.delete("/documents/{document_id}/links/{link_id}", status_code=204)
+def remove_link(
+    document_id: uuid.UUID, link_id: uuid.UUID, ctx: Ctx, relations: Relations, who: User_
+) -> Response:
+    with ctx.services.db.tenant_session(who.tenant_id) as session:
+        relations.remove(session, who, document_id, link_id)
+    return Response(status_code=204)
