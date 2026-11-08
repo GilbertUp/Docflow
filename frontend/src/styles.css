@@ -846,3 +846,12 @@ textarea {
 img.placing {
   cursor: crosshair;
 }
+
+.timeline {
+  list-style: none;
+  padding: 0;
+}
+.timeline li {
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--border, #d0d4dc);
+}

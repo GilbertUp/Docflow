@@ -60,6 +60,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/audit/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search Events
+         * @description Events, newest first. Needs the audit.read right.
+         */
+        get: operations["search_events_api_v1_audit_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Events
+         * @description The matching events as CSV, oldest first. The export is itself recorded.
+         */
+        get: operations["export_events_api_v1_audit_export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify Trail
+         * @description Checks every event's hash and link, and the chain against the external checkpoints.
+         */
+        post: operations["verify_trail_api_v1_audit_verify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/login": {
         parameters: {
             query?: never;
@@ -553,6 +613,26 @@ export interface paths {
          * @description People who can read the document, and so can be given a task on it.
          */
         get: operations["assignable_api_v1_documents__document_id__assignable_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{document_id}/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Document Timeline
+         * @description Everything recorded about one document. Needs audit.read and the right to read it.
+         */
+        get: operations["document_timeline_api_v1_documents__document_id__audit_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2157,6 +2237,43 @@ export interface components {
             version_hash: string;
             /** Version Number */
             version_number: number;
+        };
+        /** AuditEventOut */
+        AuditEventOut: {
+            /** Action */
+            action: string;
+            /** Actor Id */
+            actor_id: string | null;
+            /** Actor Name */
+            actor_name: string | null;
+            /** Actor Type */
+            actor_type: string;
+            /** Details */
+            details: {
+                [key: string]: unknown;
+            };
+            /** Label */
+            label: string;
+            /** Object Id */
+            object_id: string | null;
+            /** Object Type */
+            object_type: string | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Result */
+            result: string;
+            /** Seq */
+            seq: number;
+        };
+        /** AuditEventsOut */
+        AuditEventsOut: {
+            /** Events */
+            events: components["schemas"]["AuditEventOut"][];
+            /** Next Before Seq */
+            next_before_seq: number | null;
         };
         /** CabinetDetail */
         CabinetDetail: {
@@ -3977,6 +4094,25 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /** VerifyOut */
+        VerifyOut: {
+            /** Checkpoint Reason */
+            checkpoint_reason: string | null;
+            /** Checkpoints */
+            checkpoints: number | null;
+            /** Checkpoints Ok */
+            checkpoints_ok: boolean | null;
+            /** Events */
+            events: number;
+            /** First Bad Seq */
+            first_bad_seq: number | null;
+            /** Head Hash */
+            head_hash: string | null;
+            /** Ok */
+            ok: boolean;
+            /** Reason */
+            reason: string | null;
+        };
         /** VersionOut */
         VersionOut: {
             /**
@@ -4200,6 +4336,104 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_events_api_v1_audit_events_get: {
+        parameters: {
+            query?: {
+                actor_id?: string | null;
+                action?: string | null;
+                action_prefix?: string | null;
+                object_type?: string | null;
+                object_id?: string | null;
+                result?: string | null;
+                since?: string | null;
+                until?: string | null;
+                limit?: number;
+                before_seq?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditEventsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_events_api_v1_audit_export_get: {
+        parameters: {
+            query?: {
+                actor_id?: string | null;
+                action?: string | null;
+                action_prefix?: string | null;
+                object_type?: string | null;
+                object_id?: string | null;
+                result?: string | null;
+                since?: string | null;
+                until?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verify_trail_api_v1_audit_verify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerifyOut"];
                 };
             };
         };
@@ -5221,6 +5455,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PersonOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    document_timeline_api_v1_documents__document_id__audit_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditEventOut"][];
                 };
             };
             /** @description Validation Error */

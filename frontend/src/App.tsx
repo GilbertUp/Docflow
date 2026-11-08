@@ -9,6 +9,7 @@ import { Groups } from "./pages/admin/Groups";
 import { DocumentTypes } from "./pages/admin/DocumentTypes";
 import { Roles } from "./pages/admin/Roles";
 import { Users } from "./pages/admin/Users";
+import { AuditLog } from "./pages/admin/AuditLog";
 import { FormsAdmin } from "./pages/admin/FormsAdmin";
 import { Retention } from "./pages/admin/Retention";
 import { Workflows } from "./pages/admin/Workflows";
@@ -66,6 +67,7 @@ export function App() {
           <Route path="admin/groups" element={<Groups />} />
           <Route path="admin/roles" element={<Roles />} />
           <Route path="admin/document-types" element={<DocumentTypes />} />
+          <Route path="admin/audit" element={<AuditLog />} />
           <Route path="admin/retention" element={<Retention />} />
           <Route path="admin/forms" element={<FormsAdmin />} />
           <Route path="admin/workflows" element={<Workflows />} />

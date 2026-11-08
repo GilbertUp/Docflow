@@ -27,6 +27,7 @@ import { AclDialog } from "./AclDialog";
 import { ImportPanel } from "./ImportPanel";
 import { DetailsDialog } from "./DetailsDialog";
 import { DiscussionDialog } from "./DiscussionDialog";
+import { HistoryDialog } from "./HistoryDialog";
 import { LinksDialog } from "./LinksDialog";
 import { PreviewDialog } from "./PreviewDialog";
 import { RetentionDialog } from "./RetentionDialog";
@@ -61,6 +62,7 @@ type DialogState =
   | { kind: "workflow"; id: string; title: string }
   | { kind: "sign"; id: string; title: string }
   | { kind: "retention"; id: string; title: string }
+  | { kind: "history"; id: string; title: string }
   | { kind: "details"; id: string; title: string }
   | null;
 
@@ -528,6 +530,17 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
                         >
                           Details<span className="sr-only"> of {document.title}</span>
                         </button>
+                        {systemCan("audit.read") ? (
+                          <button
+                            type="button"
+                            className="btn btn-quiet"
+                            onClick={() =>
+                              setDialog({ kind: "history", id: document.id, title: document.title })
+                            }
+                          >
+                            History<span className="sr-only"> of {document.title}</span>
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           className="btn btn-quiet"
@@ -689,6 +702,9 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
           canEdit={can("edit_metadata") && !archived}
           onClose={() => setDialog(null)}
         />
+      ) : null}
+      {dialog?.kind === "history" ? (
+        <HistoryDialog documentId={dialog.id} title={dialog.title} onClose={() => setDialog(null)} />
       ) : null}
       {dialog?.kind === "retention" ? (
         <RetentionDialog
