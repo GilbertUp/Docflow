@@ -92,3 +92,16 @@ class UploadResult(BaseModel):
     duplicate: bool
     # Set only when the caller may read the earlier document with the same content.
     duplicate_of: uuid.UUID | None
+
+
+class PreviewPageOut(BaseModel):
+    number: int
+    width: int
+    height: int
+
+
+class PreviewOut(BaseModel):
+    version: int
+    kind: str
+    mime: str
+    pages: list[PreviewPageOut]

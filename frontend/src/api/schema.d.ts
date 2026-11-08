@@ -493,6 +493,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/documents/{document_id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview Info
+         * @description How to show the current version: as page images, as text, or not at all.
+         */
+        get: operations["preview_info_api_v1_documents__document_id__preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{document_id}/preview/pages/{number}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview Page
+         * @description One page as an image. The file itself is never sent. Needs the preview right.
+         */
+        get: operations["preview_page_api_v1_documents__document_id__preview_pages__number__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/documents/{document_id}/suggestions": {
         parameters: {
             query?: never;
@@ -1724,6 +1764,26 @@ export interface components {
             description: string;
             /** Kind */
             kind: string;
+        };
+        /** PreviewOut */
+        PreviewOut: {
+            /** Kind */
+            kind: string;
+            /** Mime */
+            mime: string;
+            /** Pages */
+            pages: components["schemas"]["PreviewPageOut"][];
+            /** Version */
+            version: number;
+        };
+        /** PreviewPageOut */
+        PreviewPageOut: {
+            /** Height */
+            height: number;
+            /** Number */
+            number: number;
+            /** Width */
+            width: number;
         };
         /** RecoveryCodesResponse */
         RecoveryCodesResponse: {
@@ -3175,6 +3235,71 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DocumentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_info_api_v1_documents__document_id__preview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviewOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_page_api_v1_documents__document_id__preview_pages__number__get: {
+        parameters: {
+            query?: {
+                width?: number;
+            };
+            header?: never;
+            path: {
+                document_id: string;
+                number: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

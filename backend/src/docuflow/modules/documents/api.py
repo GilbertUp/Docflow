@@ -9,16 +9,19 @@ from typing import Annotated, BinaryIO, cast
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Query, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from starlette.concurrency import run_in_threadpool
 
 from docuflow.modules.documents.extraction import ExtractionService
 from docuflow.modules.documents.imports import ImportService, ImportView
+from docuflow.modules.documents.preview import PreviewService
 from docuflow.modules.documents.schemas import (
     ImportItemOut,
     ImportOut,
     LanguagesOut,
     PageTextOut,
+    PreviewOut,
+    PreviewPageOut,
     TextOut,
     TextRequestOut,
     UploadResult,
@@ -51,6 +54,11 @@ def get_text(request: Request) -> ExtractionService:
     return service
 
 
+def get_preview(request: Request) -> PreviewService:
+    service: PreviewService = request.app.state.preview
+    return service
+
+
 def get_imports(request: Request) -> ImportService:
     service: ImportService = request.app.state.imports
     return service
@@ -59,6 +67,7 @@ def get_imports(request: Request) -> ImportService:
 Docs = Annotated[DocumentService, Depends(get_documents)]
 Imports = Annotated[ImportService, Depends(get_imports)]
 Text = Annotated[ExtractionService, Depends(get_text)]
+Preview = Annotated[PreviewService, Depends(get_preview)]
 Filename = Annotated[str, Query(min_length=1, max_length=300)]
 Reason = Annotated[str, Query(max_length=500)]
 
@@ -340,3 +349,34 @@ async def reprocess_text(
         text.reprocess, ctx.services.db, who, document_id, languages or None
     )
     return TextRequestOut(version=version, state=state, languages=chosen)
+
+
+@router.get("/documents/{document_id}/preview")
+def preview_info(document_id: uuid.UUID, ctx: Ctx, preview: Preview, who: User_) -> PreviewOut:
+    """How to show the current version: as page images, as text, or not at all."""
+    with ctx.services.db.tenant_session(who.tenant_id) as session:
+        view = preview.info(session, who, document_id)
+    return PreviewOut(
+        version=view.version_number,
+        kind=view.kind,
+        mime=view.mime,
+        pages=[PreviewPageOut(**vars(page)) for page in view.pages],
+    )
+
+
+@router.get("/documents/{document_id}/preview/pages/{number}")
+def preview_page(
+    document_id: uuid.UUID,
+    number: int,
+    ctx: Ctx,
+    preview: Preview,
+    who: User_,
+    width: Annotated[int, Query(ge=64, le=2000)] = 900,
+) -> Response:
+    """One page as an image. The file itself is never sent. Needs the preview right."""
+    image = preview.render(ctx.services.db, who, document_id, number, width)
+    return Response(
+        content=image.data,
+        media_type=image.media_type,
+        headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
+    )

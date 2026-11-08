@@ -25,6 +25,7 @@ import {
 import { AclDialog } from "./AclDialog";
 import { ImportPanel } from "./ImportPanel";
 import { DetailsDialog } from "./DetailsDialog";
+import { PreviewDialog } from "./PreviewDialog";
 import { TextDialog } from "./TextDialog";
 import { VersionsDialog } from "./VersionsDialog";
 import {
@@ -48,6 +49,7 @@ type DialogState =
   | { kind: "acl" }
   | { kind: "versions"; id: string; title: string }
   | { kind: "text"; id: string; title: string }
+  | { kind: "preview"; id: string; title: string }
   | { kind: "details"; id: string; title: string }
   | null;
 
@@ -519,6 +521,17 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
                             type="button"
                             className="btn btn-quiet"
                             onClick={() =>
+                              setDialog({ kind: "preview", id: document.id, title: document.title })
+                            }
+                          >
+                            View<span className="sr-only"> {document.title}</span>
+                          </button>
+                        ) : null}
+                        {can("preview") ? (
+                          <button
+                            type="button"
+                            className="btn btn-quiet"
+                            onClick={() =>
                               setDialog({ kind: "text", id: document.id, title: document.title })
                             }
                           >
@@ -619,6 +632,9 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
           canEdit={can("edit_metadata") && !archived}
           onClose={() => setDialog(null)}
         />
+      ) : null}
+      {dialog?.kind === "preview" ? (
+        <PreviewDialog documentId={dialog.id} title={dialog.title} onClose={() => setDialog(null)} />
       ) : null}
       {dialog?.kind === "text" ? (
         <TextDialog

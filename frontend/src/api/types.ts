@@ -30,6 +30,7 @@ export type DocumentTypeRow = S["TypeOut"];
 export type FieldDefinition = S["FieldModel"];
 export type IndexField = S["IndexFieldOut"];
 export type IndexResult = S["IndexOut"];
+export type PreviewInfo = S["PreviewOut"];
 export type Suggestions = S["SuggestionsOut"];
 export type SuggestedField = S["SuggestedFieldOut"];
 export type LanguageList = S["LanguagesOut"];
