@@ -9,6 +9,7 @@ from sqlalchemy import create_engine, pool
 
 from docuflow.modules.collaboration import models as collaboration_models  # noqa: F401
 from docuflow.modules.documents import models as documents_models  # noqa: F401
+from docuflow.modules.forms import models as forms_models  # noqa: F401
 from docuflow.modules.identity import models as identity_models  # noqa: F401
 from docuflow.modules.indexing import models as indexing_models  # noqa: F401
 from docuflow.modules.repository import models as repository_models  # noqa: F401

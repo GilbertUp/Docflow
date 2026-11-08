@@ -26,7 +26,7 @@ const KINDS = [
 ];
 
 /** What a person types in the editor, before it becomes a field definition. */
-interface Draft {
+export interface Draft {
   id: number;
   key: string;
   keyEdited: boolean;
@@ -46,7 +46,7 @@ interface Draft {
 
 let nextId = 1;
 
-function blank(): Draft {
+export function blank(): Draft {
   return {
     id: nextId++,
     key: "",
@@ -77,7 +77,7 @@ export function keyFromLabel(label: string): string {
   return /^[a-z]/.test(words) ? words.slice(0, 40) : words ? `f_${words}`.slice(0, 40) : "";
 }
 
-function toDraft(field: FieldDefinition): Draft {
+export function toDraft(field: FieldDefinition): Draft {
   const rules = field.validation ?? {};
   const text = (name: string) => (rules[name] === undefined ? "" : String(rules[name]));
   return {
@@ -147,7 +147,7 @@ export function toDefinition(draft: Draft): FieldDefinition {
   };
 }
 
-function FieldRow({
+export function FieldRow({
   draft,
   index,
   count,

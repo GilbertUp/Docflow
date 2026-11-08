@@ -42,6 +42,9 @@ export type WorkflowRow = S["WorkflowOut"];
 export type WorkflowInstance = S["InstanceOut"];
 export type PersonRow = S["PersonOut"];
 export type DelegationRow = S["DelegationOut"];
+export type FormRow = S["FormOut"];
+export type FormFieldRow = S["FormFieldModel"];
+export type SubmissionRow = S["SubmissionOut"];
 export type Suggestions = S["SuggestionsOut"];
 export type SuggestedField = S["SuggestedFieldOut"];
 export type LanguageList = S["LanguagesOut"];
@@ -93,4 +96,5 @@ export const SYSTEM_PERMISSIONS = [
   ["integrations.manage", "Manage API keys and identity providers"],
   ["document_types.manage", "Create document types and change their fields"],
   ["workflows.manage", "Create workflows and change their steps"],
+  ["forms.manage", "Create forms and see every submission"],
 ] as const;

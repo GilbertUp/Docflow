@@ -34,7 +34,7 @@ function valuesOf(fields: IndexField[]): Values {
 }
 
 /** One input, of the kind the field's type calls for. */
-function FieldInput({
+export function FieldInput({
   field,
   value,
   error,

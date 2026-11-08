@@ -810,3 +810,27 @@ textarea {
 .workflow-steps li {
   padding: 0.25rem 0;
 }
+
+/* Forms */
+.form-list {
+  list-style: none;
+  padding: 0;
+}
+.form-list li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border, #d0d4dc);
+}
+.answers {
+  margin: 0.25rem 0 0;
+}
+.answers div {
+  display: flex;
+  gap: 0.5rem;
+}
+.answers dt {
+  font-weight: 600;
+  min-width: 10rem;
+}
+.answers dd {
+  margin: 0;
+}

@@ -565,6 +565,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/documents/{document_id}/form-submissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Document Submissions */
+        get: operations["document_submissions_api_v1_documents__document_id__form_submissions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/documents/{document_id}/index": {
         parameters: {
             query?: never;
@@ -979,6 +996,103 @@ export interface paths {
         put?: never;
         /** Move Folder */
         post: operations["move_folder_api_v1_folders__folder_id__move_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/form-submissions/{submission_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Submission */
+        get: operations["get_submission_api_v1_form_submissions__submission_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/forms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Forms */
+        get: operations["list_forms_api_v1_forms_get"];
+        put?: never;
+        /** Create Form */
+        post: operations["create_form_api_v1_forms_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/forms/{form_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Form */
+        get: operations["get_form_api_v1_forms__form_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Form */
+        patch: operations["update_form_api_v1_forms__form_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/forms/{form_id}/submissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Submissions
+         * @description The caller's own submissions, or all of them for someone who manages forms.
+         */
+        get: operations["list_submissions_api_v1_forms__form_id__submissions_get"];
+        put?: never;
+        /**
+         * Submit Form
+         * @description Submits answers. Every problem comes back at once, by field key.
+         */
+        post: operations["submit_form_api_v1_forms__form_id__submissions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/forms/{form_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Publish Form Version
+         * @description Publishes new fields. Earlier submissions keep the version they were made on.
+         */
+        post: operations["publish_form_version_api_v1_forms__form_id__versions_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1737,6 +1851,18 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** CreateFormRequest */
+        CreateFormRequest: {
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Fields */
+            fields: components["schemas"]["FormFieldModel"][];
+            /** Name */
+            name: string;
+        };
         /** CreateGroupRequest */
         CreateGroupRequest: {
             /**
@@ -2052,6 +2178,51 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** FormFieldModel */
+        FormFieldModel: {
+            /** Choices */
+            choices?: components["schemas"]["ChoiceModel"][];
+            /**
+             * Data Type
+             * @enum {string}
+             */
+            data_type: "text" | "number" | "date" | "boolean" | "choice";
+            /** Default Value */
+            default_value?: string | null;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /**
+             * Required
+             * @default false
+             */
+            required: boolean;
+            /** Validation */
+            validation?: {
+                [key: string]: unknown;
+            };
+        };
+        /** FormOut */
+        FormOut: {
+            /** Description */
+            description: string;
+            /** Fields */
+            fields: components["schemas"]["FormFieldModel"][];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Row Version */
+            row_version: number;
+            /** Status */
+            status: string;
+            /** Version */
+            version: number;
+        };
         /** GroupOut */
         GroupOut: {
             /** Description */
@@ -2352,6 +2523,13 @@ export interface components {
         /** MoveRequest */
         MoveRequest: {
             destination: components["schemas"]["DestinationModel"];
+            /** Row Version */
+            row_version: number;
+        };
+        /** NewFormVersionRequest */
+        NewFormVersionRequest: {
+            /** Fields */
+            fields: components["schemas"]["FormFieldModel"][];
             /** Row Version */
             row_version: number;
         };
@@ -2702,6 +2880,49 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** SubmissionOut */
+        SubmissionOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Data */
+            data: {
+                [key: string]: unknown;
+            };
+            /** Document Id */
+            document_id: string | null;
+            /** Form Name */
+            form_name: string;
+            /** Form Version */
+            form_version: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Labels */
+            labels: {
+                [key: string]: string;
+            };
+            /**
+             * Submitter Id
+             * Format: uuid
+             */
+            submitter_id: string;
+            /** Submitter Name */
+            submitter_name: string;
+        };
+        /** SubmitRequest */
+        SubmitRequest: {
+            /** Answers */
+            answers?: {
+                [key: string]: unknown;
+            };
+            /** Document Id */
+            document_id?: string | null;
+        };
         /** SuggestedFieldOut */
         SuggestedFieldOut: {
             /** Band */
@@ -2851,6 +3072,15 @@ export interface components {
         };
         /** UpdateFolderRequest */
         UpdateFolderRequest: {
+            /** Name */
+            name?: string | null;
+            /** Row Version */
+            row_version: number;
+            /** Status */
+            status?: ("active" | "archived") | null;
+        };
+        /** UpdateFormRequest */
+        UpdateFormRequest: {
             /** Name */
             name?: string | null;
             /** Row Version */
@@ -4286,6 +4516,37 @@ export interface operations {
             };
         };
     };
+    document_submissions_api_v1_documents__document_id__form_submissions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmissionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_index_api_v1_documents__document_id__index_get: {
         parameters: {
             query?: never;
@@ -5228,6 +5489,271 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FolderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_submission_api_v1_form_submissions__submission_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                submission_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmissionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_forms_api_v1_forms_get: {
+        parameters: {
+            query?: {
+                include_archived?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_form_api_v1_forms_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateFormRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_form_api_v1_forms__form_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                form_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_form_api_v1_forms__form_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                form_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateFormRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_submissions_api_v1_forms__form_id__submissions_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                form_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmissionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_form_api_v1_forms__form_id__submissions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                form_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmissionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    publish_form_version_api_v1_forms__form_id__versions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                form_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewFormVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormOut"];
                 };
             };
             /** @description Validation Error */

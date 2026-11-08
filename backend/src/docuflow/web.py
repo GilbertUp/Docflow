@@ -15,6 +15,8 @@ from docuflow.modules.collaboration.service import CollaborationService
 from docuflow.modules.documents.api import router as documents_router
 from docuflow.modules.documents.relationships import RelationshipService
 from docuflow.modules.documents.wiring import build_documents
+from docuflow.modules.forms.api import router as forms_router
+from docuflow.modules.forms.service import FormService
 from docuflow.modules.identity.api import (
     MUST_CHANGE_CODE,
     ApiContext,
@@ -86,6 +88,7 @@ def install(app: FastAPI, services: Services) -> ApiContext:
     app.state.search = SearchService(services.audit, ctx.policy)
     app.state.collaboration = CollaborationService(services.audit, ctx.policy, app.state.repo)
     app.state.workflow = WorkflowService(services.audit, ctx.policy, app.state.repo)
+    app.state.forms = FormService(services.audit, ctx.policy, app.state.repo)
     app.include_router(router)
     app.include_router(repository_router)
     app.include_router(documents_router)
@@ -93,6 +96,7 @@ def install(app: FastAPI, services: Services) -> ApiContext:
     app.include_router(search_router)
     app.include_router(collaboration_router)
     app.include_router(workflow_router)
+    app.include_router(forms_router)
 
     @app.exception_handler(DomainError)
     async def domain_error(request: Request, exc: DomainError) -> JSONResponse:

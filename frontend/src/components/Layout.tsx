@@ -30,6 +30,7 @@ export function Layout() {
           <NavLink to="/files">Files</NavLink>
           <NavLink to="/search">Search</NavLink>
           <NavLink to="/tasks">Tasks</NavLink>
+          <NavLink to="/forms">Forms</NavLink>
           <NavLink to="/notifications">
             Notifications
             {unread > 0 ? (
@@ -45,6 +46,7 @@ export function Layout() {
             <NavLink to="/admin/document-types">Document types</NavLink>
           ) : null}
           <NavLink to="/admin/workflows">Workflows</NavLink>
+          {can("forms.manage") ? <NavLink to="/admin/forms">Manage forms</NavLink> : null}
           {can("integrations.manage") ? <NavLink to="/admin/api-keys">API keys</NavLink> : null}
         </nav>
         <div className="userbox">
