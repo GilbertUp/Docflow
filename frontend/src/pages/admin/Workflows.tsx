@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { api, fieldErrors } from "../../api/client";
-import type { DocumentTypeRow, PersonRow, WorkflowRow } from "../../api/types";
+import type { DocumentTypeRow, PersonRow, SlaPolicyRow, WorkflowRow } from "../../api/types";
 import { useAuth } from "../../auth/AuthContext";
 import {
   ActionMenu,
@@ -201,6 +201,71 @@ function WorkflowDialog({ workflow, onClose }: { workflow: WorkflowRow | null; o
   );
 }
 
+/** Hours as the API takes them: blank is none. */
+export function hoursOrNull(text: string): number | null {
+  const clean = text.trim();
+  return clean === "" ? null : Number(clean);
+}
+
+function SlaPanel() {
+  const queryClient = useQueryClient();
+  const policy = useQuery({ queryKey: ["sla"], queryFn: () => api.get<SlaPolicyRow>("/sla-policy") });
+  const people = useQuery({ queryKey: ["people"], queryFn: () => api.get<PersonRow[]>("/people") });
+  const [reminder, setReminder] = useState<string | null>(null);
+  const [after, setAfter] = useState<string | null>(null);
+  const [target, setTarget] = useState<string | null>(null);
+  const save = useMutation({
+    mutationFn: () =>
+      api.put("/sla-policy", {
+        reminder_before_hours: Number(reminder ?? policy.data?.reminder_before_hours ?? 0),
+        escalate_after_hours: hoursOrNull(after ?? String(policy.data?.escalate_after_hours ?? "")),
+        escalate_to_user_id: (target ?? policy.data?.escalate_to_user_id ?? "") || null,
+      }),
+    onSuccess: () => {
+      setReminder(null);
+      setAfter(null);
+      setTarget(null);
+      void queryClient.invalidateQueries({ queryKey: ["sla"] });
+    },
+  });
+  if (!policy.data) return null;
+  return (
+    <section>
+      <h2>Deadlines</h2>
+      <p className="muted">
+        Tasks with a due time remind the person, and can tell someone else when they are overdue.
+      </p>
+      <Form onSubmit={() => save.mutate()}>
+        <TextField
+          label="Remind this many hours before it is due (0 for never)"
+          value={reminder ?? String(policy.data.reminder_before_hours)}
+          onChange={setReminder}
+          inputMode="numeric"
+        />
+        <TextField
+          label="Tell someone this many hours after it is due (blank for never)"
+          value={after ?? String(policy.data.escalate_after_hours ?? "")}
+          onChange={setAfter}
+          inputMode="numeric"
+        />
+        <SelectField
+          label="Who to tell"
+          value={target ?? policy.data.escalate_to_user_id ?? ""}
+          onChange={setTarget}
+          options={(people.data ?? []).map((p) => ({ value: p.id, label: p.name }))}
+          placeholder="Whoever made the task"
+        />
+        <ErrorNotice error={save.error} />
+        <FormActions>
+          <button type="submit" className="btn btn-primary" disabled={save.isPending}>
+            Save deadlines
+          </button>
+        </FormActions>
+      </Form>
+    </section>
+  );
+}
+
 type DialogState = { kind: "create" } | { kind: "edit"; workflow: WorkflowRow } | null;
 
 export function Workflows() {
@@ -287,6 +352,7 @@ export function Workflows() {
           </table>
         </div>
       ) : null}
+      {manage ? <SlaPanel /> : null}
       {dialog?.kind === "create" ? <WorkflowDialog workflow={null} onClose={() => setDialog(null)} /> : null}
       {dialog?.kind === "edit" ? (
         <WorkflowDialog workflow={dialog.workflow} onClose={() => setDialog(null)} />

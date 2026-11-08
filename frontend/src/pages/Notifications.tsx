@@ -2,8 +2,72 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 import { api } from "../api/client";
-import type { NotificationList } from "../api/types";
+import type { DeliveryRow, NotificationList, PreferenceRow } from "../api/types";
 import { EmptyState, ErrorNotice, Spinner, formatDate } from "../components/ui";
+
+/** The preferences after one is switched, as the API takes them. */
+export function withChange(
+  rows: Pick<PreferenceRow, "kind" | "email">[],
+  kind: string,
+  email: boolean,
+): Record<string, boolean> {
+  return Object.fromEntries(rows.map((row) => [row.kind, row.kind === kind ? email : row.email]));
+}
+
+function EmailPreferences() {
+  const queryClient = useQueryClient();
+  const prefs = useQuery({
+    queryKey: ["notification-preferences"],
+    queryFn: () => api.get<PreferenceRow[]>("/notification-preferences"),
+  });
+  const sent = useQuery({
+    queryKey: ["email-deliveries"],
+    queryFn: () => api.get<DeliveryRow[]>("/email-deliveries"),
+  });
+  const save = useMutation({
+    mutationFn: (input: { kind: string; email: boolean }) =>
+      api.put("/notification-preferences", {
+        email: withChange(prefs.data ?? [], input.kind, input.email),
+      }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["notification-preferences"] }),
+  });
+  return (
+    <section>
+      <h2>Email me when</h2>
+      <ErrorNotice error={prefs.error ?? save.error} />
+      <ul className="plain-list">
+        {(prefs.data ?? []).map((row) => (
+          <li key={row.kind}>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={row.email}
+                disabled={save.isPending}
+                onChange={(event) => save.mutate({ kind: row.kind, email: event.target.checked })}
+              />
+              {row.description}
+            </label>
+          </li>
+        ))}
+      </ul>
+      {sent.data && sent.data.length > 0 ? (
+        <>
+          <h3>Recent emails</h3>
+          <ul className="plain-list">
+            {sent.data.slice(0, 10).map((mail) => (
+              <li key={mail.id}>
+                {mail.subject} <span className="badge">{mail.status}</span>
+                {mail.status === "failed" && mail.last_error ? (
+                  <div className="muted">{mail.last_error}</div>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+    </section>
+  );
+}
 
 export function Notifications() {
   const queryClient = useQueryClient();
@@ -56,6 +120,7 @@ export function Notifications() {
           </li>
         ))}
       </ul>
+      <EmailPreferences />
     </div>
   );
 }

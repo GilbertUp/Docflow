@@ -834,3 +834,11 @@ textarea {
 .answers dd {
   margin: 0;
 }
+
+.plain-list {
+  list-style: none;
+  padding: 0;
+}
+.plain-list li {
+  padding: 0.25rem 0;
+}

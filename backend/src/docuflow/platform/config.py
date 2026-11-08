@@ -62,6 +62,14 @@ class Settings(BaseSettings):
     clamav_port: int = 3310
     clamav_timeout_seconds: float = Field(default=60.0, gt=0)
 
+    # Email (F13). Without a host, notifications stay in the app and email ends as failed.
+    smtp_host: str | None = None
+    smtp_port: int = Field(default=587, gt=0, lt=65536)
+    smtp_username: str | None = None
+    smtp_password: SecretStr | None = None
+    smtp_from: str = "docuflow@localhost"
+    smtp_starttls: bool = True
+
     job_max_attempts: int = 5
     job_heartbeat_timeout_seconds: int = 300
     job_retry_base_seconds: int = 30

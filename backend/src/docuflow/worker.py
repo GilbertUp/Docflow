@@ -16,6 +16,12 @@ from docuflow.modules.documents.wiring import build_documents
 from docuflow.modules.identity.policy import PolicyService
 from docuflow.modules.indexing.suggest import JOB_TYPE as FIELDS_JOB
 from docuflow.modules.indexing.suggest import SuggestionService
+from docuflow.modules.notifications.service import (
+    EMAIL_JOB,
+    SLA_JOB,
+    NotificationService,
+    build_sender,
+)
 from docuflow.modules.repository.service import RepositoryService
 from docuflow.modules.search.service import JOB_TYPE as SEARCH_JOB
 from docuflow.modules.search.service import SearchService
@@ -79,6 +85,19 @@ def workflow_document_typed(job: JobContext) -> None:
     policy = PolicyService()
     repo = RepositoryService(services.audit, policy)
     WorkflowService(services.audit, policy, repo).run(services.db, job)
+
+
+@registry.register(SLA_JOB)
+def notifications_sla(job: JobContext) -> None:
+    services = get_services()
+    NotificationService(services.audit, PolicyService()).run_sla(services.db, job)
+
+
+@registry.register(EMAIL_JOB)
+def notifications_send_email(job: JobContext) -> None:
+    services = get_services()
+    sender = build_sender(services.settings)
+    NotificationService(services.audit, PolicyService(), sender).run_email(services.db, job)
 
 
 def make_celery(broker_url: str) -> Celery:

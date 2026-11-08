@@ -70,7 +70,9 @@ class Notification(IdMixin, TimestampMixin, Base):
     __tablename__ = "notification"
     __table_args__ = (
         CheckConstraint(
-            "kind IN ('task_assigned', 'task_done', 'mention', 'workflow_finished')", name="kind"
+            "kind IN ('task_assigned', 'task_done', 'mention', 'workflow_finished', "
+            "'task_reminder', 'task_overdue', 'task_escalated')",
+            name="kind",
         ),
         Index("ix_notification_user", "tenant_id", "user_id", "read_at", "created_at"),
     )

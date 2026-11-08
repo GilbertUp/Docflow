@@ -24,11 +24,12 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from docuflow.modules.collaboration.models import Notification, Task
+from docuflow.modules.collaboration.models import Task
 from docuflow.modules.identity.auth import Principal
 from docuflow.modules.identity.models import User
 from docuflow.modules.identity.policy import PolicyService
 from docuflow.modules.indexing.models import DocumentType
+from docuflow.modules.notifications.service import add_notification, schedule_task_timers
 from docuflow.modules.repository.models import Document
 from docuflow.modules.repository.service import RepositoryService
 from docuflow.modules.workflow.models import (
@@ -417,17 +418,17 @@ class WorkflowService:
         session.add(task)
         session.flush()
         step.task_id = task.id
+        schedule_task_timers(session, instance.tenant_id, task)
         if step.assignee_id != instance.started_by:
-            session.add(
-                Notification(
-                    tenant_id=instance.tenant_id,
-                    user_id=step.assignee_id,
-                    kind="task_assigned",
-                    document_id=document.id,
-                    ref_id=task.id,
-                    title=f"Task for you: {task.title}"[:300],
-                    actor_id=instance.started_by,
-                )
+            add_notification(
+                session,
+                tenant_id=instance.tenant_id,
+                user_id=step.assignee_id,
+                kind="task_assigned",
+                title=f"Task for you: {task.title}",
+                document_id=document.id,
+                ref_id=task.id,
+                actor_id=instance.started_by,
             )
         self._event(
             session,
@@ -555,16 +556,15 @@ class WorkflowService:
         instance.row_version += 1
         self._event(session, instance, status, actor_id, None)
         if instance.started_by and instance.started_by != actor_id:
-            session.add(
-                Notification(
-                    tenant_id=instance.tenant_id,
-                    user_id=instance.started_by,
-                    kind="workflow_finished",
-                    document_id=document.id,
-                    ref_id=instance.id,
-                    title=f"{message}: {document.title}"[:300],
-                    actor_id=actor_id,
-                )
+            add_notification(
+                session,
+                tenant_id=instance.tenant_id,
+                user_id=instance.started_by,
+                kind="workflow_finished",
+                title=f"{message}: {document.title}",
+                document_id=document.id,
+                ref_id=instance.id,
+                actor_id=actor_id,
             )
         self._record(
             session,

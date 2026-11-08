@@ -26,6 +26,7 @@ from docuflow.modules.collaboration.models import Comment, Mention, Notification
 from docuflow.modules.identity.auth import Principal
 from docuflow.modules.identity.models import User
 from docuflow.modules.identity.policy import PolicyService
+from docuflow.modules.notifications.service import add_notification, schedule_task_timers
 from docuflow.modules.repository.models import Document
 from docuflow.modules.repository.service import RepositoryService
 from docuflow.platform.audit import AuditActor, AuditLog
@@ -130,16 +131,15 @@ class CollaborationService:
     ) -> None:
         if user_id == principal.user_id:
             return
-        session.add(
-            Notification(
-                tenant_id=principal.tenant_id,
-                user_id=user_id,
-                kind=kind,
-                document_id=document.id,
-                ref_id=ref_id,
-                title=title[:300],
-                actor_id=principal.user_id,
-            )
+        add_notification(
+            session,
+            tenant_id=principal.tenant_id,
+            user_id=user_id,
+            kind=kind,
+            title=title,
+            document_id=document.id,
+            ref_id=ref_id,
+            actor_id=principal.user_id,
         )
 
     @staticmethod
@@ -365,6 +365,7 @@ class CollaborationService:
         )
         session.add(task)
         session.flush()
+        schedule_task_timers(session, principal.tenant_id, task)
         self._notify(
             session,
             principal,
@@ -443,6 +444,7 @@ class CollaborationService:
             if new_due != task.due_at:
                 changes["due_at"] = [str(task.due_at), str(new_due)]
                 task.due_at = new_due
+                schedule_task_timers(session, principal.tenant_id, task)
         if assignee_id is not None and assignee_id != task.assignee_id:
             self._check_assignee(session, principal, document, assignee_id)
             changes["assignee"] = [str(task.assignee_id), str(assignee_id)]

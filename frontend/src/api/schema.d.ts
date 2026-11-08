@@ -881,6 +881,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/email-deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Deliveries
+         * @description The caller's own emails, and what happened when each was sent.
+         */
+        get: operations["deliveries_api_v1_email_deliveries_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/folders/{folder_id}": {
         parameters: {
             query?: never;
@@ -1172,6 +1192,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/notification-preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Preferences */
+        get: operations["get_preferences_api_v1_notification_preferences_get"];
+        /** Set Preferences */
+        put: operations["set_preferences_api_v1_notification_preferences_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/notifications": {
         parameters: {
             query?: never;
@@ -1363,6 +1401,24 @@ export interface paths {
          */
         get: operations["search_documents_api_v1_search_get"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sla-policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Sla */
+        get: operations["get_sla_api_v1_sla_policy_get"];
+        /** Set Sla */
+        put: operations["set_sla_api_v1_sla_policy_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -2030,6 +2086,29 @@ export interface components {
              */
             to_user_id: string;
         };
+        /** DeliveryOut */
+        DeliveryOut: {
+            /** Attempts */
+            attempts: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Last Error */
+            last_error: string | null;
+            /** Sent At */
+            sent_at: string | null;
+            /** Status */
+            status: string;
+            /** Subject */
+            subject: string;
+        };
         /** DepartmentOut */
         DepartmentOut: {
             /**
@@ -2690,6 +2769,15 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** PreferenceOut */
+        PreferenceOut: {
+            /** Description */
+            description: string;
+            /** Email */
+            email: boolean;
+            /** Kind */
+            kind: string;
+        };
         /** PreviewOut */
         PreviewOut: {
             /** Kind */
@@ -2810,6 +2898,33 @@ export interface components {
         SetPermissionsRequest: {
             /** Permissions */
             permissions: string[];
+        };
+        /** SetPreferencesRequest */
+        SetPreferencesRequest: {
+            /** Email */
+            email: {
+                [key: string]: boolean;
+            };
+        };
+        /** SetSlaRequest */
+        SetSlaRequest: {
+            /** Escalate After Hours */
+            escalate_after_hours?: number | null;
+            /** Escalate To User Id */
+            escalate_to_user_id?: string | null;
+            /** Reminder Before Hours */
+            reminder_before_hours: number;
+        };
+        /** SlaOut */
+        SlaOut: {
+            /** Escalate After Hours */
+            escalate_after_hours: number | null;
+            /** Escalate To Name */
+            escalate_to_name: string | null;
+            /** Escalate To User Id */
+            escalate_to_user_id: string | null;
+            /** Reminder Before Hours */
+            reminder_before_hours: number;
         };
         /** StartWorkflowRequest */
         StartWorkflowRequest: {
@@ -5201,6 +5316,26 @@ export interface operations {
             };
         };
     };
+    deliveries_api_v1_email_deliveries_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryOut"][];
+                };
+            };
+        };
+    };
     get_folder_api_v1_folders__folder_id__get: {
         parameters: {
             query?: never;
@@ -5954,6 +6089,59 @@ export interface operations {
             };
         };
     };
+    get_preferences_api_v1_notification_preferences_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreferenceOut"][];
+                };
+            };
+        };
+    };
+    set_preferences_api_v1_notification_preferences_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetPreferencesRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreferenceOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_notifications_api_v1_notifications_get: {
         parameters: {
             query?: {
@@ -6315,6 +6503,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SearchOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_sla_api_v1_sla_policy_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SlaOut"];
+                };
+            };
+        };
+    };
+    set_sla_api_v1_sla_policy_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetSlaRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SlaOut"];
                 };
             };
             /** @description Validation Error */
