@@ -60,6 +60,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/assistant/ask": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask
+         * @description Answers from documents the caller may read, with the passages it used.
+         */
+        post: operations["ask_api_v1_assistant_ask_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assistant/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * History
+         * @description The caller's own recent questions. Answers are not kept here: access may have changed.
+         */
+        get: operations["history_api_v1_assistant_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assistant/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Settings */
+        get: operations["get_settings_api_v1_assistant_settings_get"];
+        /**
+         * Set Settings
+         * @description Needs the integrations.manage right. Generated answers are off until this turns them on.
+         */
+        put: operations["set_settings_api_v1_assistant_settings_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/audit/events": {
         parameters: {
             query?: never;
@@ -2315,6 +2376,88 @@ export interface components {
             /** Version Number */
             version_number: number;
         };
+        /** AssistantAnswerOut */
+        AssistantAnswerOut: {
+            /** Answer */
+            answer: string | null;
+            /** Flagged */
+            flagged: boolean;
+            /** Mode */
+            mode: string;
+            /** Notices */
+            notices: string[];
+            /** Query Id */
+            query_id: string | null;
+            /** Sources */
+            sources: components["schemas"]["AssistantSourceOut"][];
+        };
+        /** AssistantAskRequest */
+        AssistantAskRequest: {
+            /** Cabinet Id */
+            cabinet_id?: string | null;
+            /** Question */
+            question: string;
+        };
+        /** AssistantHistoryOut */
+        AssistantHistoryOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Mode */
+            mode: string;
+            /** Question */
+            question: string;
+        };
+        /** AssistantSetSettingsRequest */
+        AssistantSetSettingsRequest: {
+            /** Excluded Cabinet Ids */
+            excluded_cabinet_ids?: string[];
+            /** Generation Enabled */
+            generation_enabled: boolean;
+        };
+        /** AssistantSettingsOut */
+        AssistantSettingsOut: {
+            /** Excluded Cabinet Ids */
+            excluded_cabinet_ids: string[];
+            /** Generation Enabled */
+            generation_enabled: boolean;
+            /** Model */
+            model: string | null;
+            /** Provider */
+            provider: string | null;
+            /** Provider Configured */
+            provider_configured: boolean;
+        };
+        /** AssistantSourceOut */
+        AssistantSourceOut: {
+            /**
+             * Cabinet Id
+             * Format: uuid
+             */
+            cabinet_id: string;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** Folder Id */
+            folder_id: string | null;
+            /** Number */
+            number: number;
+            /** Page */
+            page: number;
+            /** Snippet */
+            snippet: string;
+            /** Title */
+            title: string;
+        };
         /** AuditEventOut */
         AuditEventOut: {
             /** Action */
@@ -4465,6 +4608,112 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ask_api_v1_assistant_ask_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssistantAskRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssistantAnswerOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    history_api_v1_assistant_history_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssistantHistoryOut"][];
+                };
+            };
+        };
+    };
+    get_settings_api_v1_assistant_settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssistantSettingsOut"];
+                };
+            };
+        };
+    };
+    set_settings_api_v1_assistant_settings_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssistantSetSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssistantSettingsOut"];
+                };
             };
             /** @description Validation Error */
             422: {

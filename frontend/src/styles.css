@@ -855,3 +855,17 @@ img.placing {
   padding: 0.4rem 0;
   border-bottom: 1px solid var(--border, #d0d4dc);
 }
+
+.answer {
+  margin: 1rem 0;
+}
+.answer-text {
+  font-size: 1.1rem;
+  white-space: pre-wrap;
+}
+.sources blockquote {
+  margin: 0.25rem 0 0.75rem;
+  padding-left: 0.75rem;
+  border-left: 3px solid var(--border, #d0d4dc);
+  white-space: pre-wrap;
+}

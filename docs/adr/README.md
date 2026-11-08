@@ -36,3 +36,4 @@ All records were **accepted** on 2026-11-06, when the owner accepted the plan de
 | [0030](0030-retention-holds-disposal.md) | Retention classes, legal holds, disposal | None needed |
 | [0031](0031-audit-trail-access.md) | Reading, exporting and verifying the audit trail | None needed |
 | [0032](0032-compression-first-slice.md) | Compressing scanned documents, judged page by page | None needed |
+| [0033](0033-assistant-first-slice.md) | Cited answers from permitted passages, extracts by default | External AI off by default |

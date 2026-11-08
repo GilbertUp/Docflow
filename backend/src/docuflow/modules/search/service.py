@@ -26,7 +26,8 @@ from docuflow.modules.identity.auth import Principal
 from docuflow.modules.identity.policy import PolicyService
 from docuflow.modules.indexing.models import DocumentType, IndexField, IndexValue
 from docuflow.modules.repository.models import Document
-from docuflow.modules.search.models import SearchEntry
+from docuflow.modules.search.chunking import split_pages
+from docuflow.modules.search.models import SearchChunk, SearchEntry
 from docuflow.platform.audit import AuditActor, AuditLog
 from docuflow.platform.db import Database, utcnow
 from docuflow.platform.errors import DomainError
@@ -101,12 +102,13 @@ class SearchService:
         return words
 
     @staticmethod
-    def _page_text(session: Session, version_id: uuid.UUID) -> str:
+    def _pages(session: Session, version_id: uuid.UUID) -> list[tuple[int, str]]:
+        """The current text of each page, as (page number, text)."""
         pages = list(
             session.scalars(select(Page).where(Page.version_id == version_id).order_by(Page.number))
         )
         if not pages:
-            return ""
+            return []
         latest: dict[uuid.UUID, str] = {}
         for row in session.scalars(
             select(OcrResult)
@@ -114,8 +116,7 @@ class SearchService:
             .order_by(OcrResult.created_at, OcrResult.id)
         ):
             latest[row.page_id] = row.text  # the newest row comes last
-        joined = "\n".join(latest[page.id] for page in pages if page.id in latest)
-        return joined[:MAX_BODY]
+        return [(page.number, latest[page.id]) for page in pages if page.id in latest]
 
     def run(self, db: Database, ctx: JobContext) -> None:
         document_id = uuid.UUID(ctx.payload["document_id"])
@@ -123,6 +124,7 @@ class SearchService:
             document = session.get(Document, document_id)
             if document is None or document.status != "active":
                 session.execute(delete(SearchEntry).where(SearchEntry.document_id == document_id))
+                session.execute(delete(SearchChunk).where(SearchChunk.document_id == document_id))
                 return
             kind = (
                 session.get(DocumentType, document.document_type_id)
@@ -137,7 +139,8 @@ class SearchService:
                 if document.current_version_id
                 else None
             )
-            body = self._page_text(session, version.id) if version else ""
+            pages = self._pages(session, version.id) if version else []
+            body = "\n".join(text for _number, text in pages)[:MAX_BODY]
             values: dict[str, Any] = {
                 "tenant_id": ctx.tenant_id,
                 "document_id": document.id,
@@ -146,6 +149,18 @@ class SearchService:
                 "body": body,
                 "indexed_at": utcnow(),
             }
+            session.execute(delete(SearchChunk).where(SearchChunk.document_id == document.id))
+            session.add_all(
+                SearchChunk(
+                    tenant_id=ctx.tenant_id,
+                    document_id=document.id,
+                    version_number=version.number if version else 0,
+                    page_number=passage.page,
+                    ordinal=passage.ordinal,
+                    text=passage.text,
+                )
+                for passage in split_pages(pages)
+            )
             statement = insert(SearchEntry).values(id=uuid.uuid4(), **values)
             session.execute(
                 statement.on_conflict_do_update(constraint="uq_search_entry_document", set_=values)

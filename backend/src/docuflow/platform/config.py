@@ -70,6 +70,14 @@ class Settings(BaseSettings):
     smtp_from: str = "docuflow@localhost"
     smtp_starttls: bool = True
 
+    # The AI service for generated answers (F18). With none, the assistant returns extracts.
+    # An organization must also switch generated answers on, and starts with them off.
+    ai_provider: Literal["none", "openai_compatible", "anthropic"] = "none"
+    ai_base_url: str | None = None
+    ai_model: str | None = None
+    ai_api_key: SecretStr | None = None
+    ai_timeout_seconds: float = Field(default=60.0, gt=0)
+
     job_max_attempts: int = 5
     job_heartbeat_timeout_seconds: int = 300
     job_retry_base_seconds: int = 30

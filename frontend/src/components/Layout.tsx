@@ -29,6 +29,7 @@ export function Layout() {
         <nav className="topnav" aria-label="Main">
           <NavLink to="/files">Files</NavLink>
           <NavLink to="/search">Search</NavLink>
+          <NavLink to="/ask">Ask</NavLink>
           <NavLink to="/tasks">Tasks</NavLink>
           <NavLink to="/forms">Forms</NavLink>
           <NavLink to="/notifications">

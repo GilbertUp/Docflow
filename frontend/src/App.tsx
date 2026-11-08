@@ -4,6 +4,7 @@ import { useAuth } from "./auth/AuthContext";
 import { Layout } from "./components/Layout";
 import { Spinner } from "./components/ui";
 import { Account } from "./pages/Account";
+import { Ask } from "./pages/Ask";
 import { ApiKeys } from "./pages/admin/ApiKeys";
 import { Groups } from "./pages/admin/Groups";
 import { DocumentTypes } from "./pages/admin/DocumentTypes";
@@ -59,6 +60,7 @@ export function App() {
             <Route path="folders/:id" element={<Browser key="folder" kind="folder" />} />
           </Route>
           <Route path="search" element={<Search />} />
+          <Route path="ask" element={<Ask />} />
           <Route path="tasks" element={<Tasks />} />
           <Route path="forms" element={<Forms />} />
           <Route path="forms/:id" element={<FillForm />} />

@@ -18,7 +18,7 @@ from docuflow.modules.indexing.models import ExtractedField, IndexValue
 from docuflow.modules.indexing.suggest import JOB_TYPE as FIELDS_JOB
 from docuflow.modules.repository.models import Document
 from docuflow.modules.retention.models import DisposalEvent
-from docuflow.modules.search.models import SearchEntry
+from docuflow.modules.search.models import SearchChunk, SearchEntry
 from docuflow.modules.search.service import JOB_TYPE as SEARCH_JOB
 from docuflow.modules.signatures.models import Approval, Signature, StampApplication
 from docuflow.modules.workflow.models import WorkflowInstance
@@ -447,6 +447,7 @@ def test_disposal_destroys_everything_about_a_document_and_leaves_one_record(
         (WorkflowInstance, WorkflowInstance.document_id == d),
         (FormSubmission, FormSubmission.document_id == d),
         (SearchEntry, SearchEntry.document_id == d),
+        (SearchChunk, SearchChunk.document_id == d),
     ):
         assert count(db, tenant, model, where) > 0, model.__name__  # there is something to destroy
     versions_before = count(db, tenant, DocumentVersion)
@@ -480,6 +481,7 @@ def test_disposal_destroys_everything_about_a_document_and_leaves_one_record(
         (WorkflowInstance, WorkflowInstance.document_id == d),
         (FormSubmission, FormSubmission.document_id == d),
         (SearchEntry, SearchEntry.document_id == d),
+        (SearchChunk, SearchChunk.document_id == d),
         (IndexValue, IndexValue.document_id == d),
     ):
         assert count(db, tenant, model, where) == 0, model.__name__

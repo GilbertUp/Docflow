@@ -12,6 +12,29 @@ from sqlalchemy.orm import Mapped, mapped_column
 from docuflow.platform.db import Base, IdMixin, utcnow
 
 
+class SearchChunk(IdMixin, Base):
+    """A page-sized passage of a document's text, for finding evidence and citing it (F18).
+
+    Rebuilt with the document's search row. Seeing it needs the same rights as seeing the text.
+    """
+
+    __tablename__ = "search_chunk"
+    __table_args__ = (
+        Index("ix_search_chunk_tsv", "tsv", postgresql_using="gin"),
+        Index("ix_search_chunk_document", "tenant_id", "document_id", "ordinal"),
+    )
+
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"))
+    document_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("document.id", ondelete="CASCADE"))
+    version_number: Mapped[int] = mapped_column(Integer, default=0)
+    page_number: Mapped[int] = mapped_column(Integer)
+    ordinal: Mapped[int] = mapped_column(Integer)
+    text: Mapped[str] = mapped_column(Text)
+    tsv: Mapped[str] = mapped_column(
+        TSVECTOR, Computed("to_tsvector('simple', text)", persisted=True)
+    )
+
+
 class SearchEntry(IdMixin, Base):
     """One row per document, rebuilt whenever its title, details or text change.
 
