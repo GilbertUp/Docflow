@@ -144,7 +144,7 @@ Each milestone ends with a gate: tests pass, acceptance demo runs from a clean i
 | F02 | Cabinet retention policy needs F15; auto-routing needs F07 and F11 |
 | F03 | Email ingestion completes with F20 |
 | F05 | Audit timeline view needs F16 |
-| F09 | Compressed derivative in the demo needs F17 |
+| F09 | Compressed derivative in the demo now has a first slice (F17), for scanned files only |
 
 ---
 

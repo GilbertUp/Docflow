@@ -26,6 +26,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { AclDialog } from "./AclDialog";
 import { ImportPanel } from "./ImportPanel";
 import { DetailsDialog } from "./DetailsDialog";
+import { CompressionDialog } from "./CompressionDialog";
 import { DiscussionDialog } from "./DiscussionDialog";
 import { HistoryDialog } from "./HistoryDialog";
 import { LinksDialog } from "./LinksDialog";
@@ -63,6 +64,7 @@ type DialogState =
   | { kind: "sign"; id: string; title: string }
   | { kind: "retention"; id: string; title: string }
   | { kind: "history"; id: string; title: string }
+  | { kind: "compression"; id: string; title: string }
   | { kind: "details"; id: string; title: string }
   | null;
 
@@ -530,6 +532,15 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
                         >
                           Details<span className="sr-only"> of {document.title}</span>
                         </button>
+                        <button
+                          type="button"
+                          className="btn btn-quiet"
+                          onClick={() =>
+                            setDialog({ kind: "compression", id: document.id, title: document.title })
+                          }
+                        >
+                          Compress<span className="sr-only"> {document.title}</span>
+                        </button>
                         {systemCan("audit.read") ? (
                           <button
                             type="button"
@@ -700,6 +711,15 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
           documentId={dialog.id}
           title={dialog.title}
           canEdit={can("edit_metadata") && !archived}
+          onClose={() => setDialog(null)}
+        />
+      ) : null}
+      {dialog?.kind === "compression" ? (
+        <CompressionDialog
+          documentId={dialog.id}
+          title={dialog.title}
+          canRun={can("edit_metadata") && !archived}
+          canDownload={can("download")}
           onClose={() => setDialog(null)}
         />
       ) : null}

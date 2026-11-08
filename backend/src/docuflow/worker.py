@@ -11,6 +11,8 @@ from celery import Celery
 from celery.signals import worker_ready
 from redis.exceptions import RedisError
 
+from docuflow.modules.compression.service import JOB_TYPE as COMPRESS_JOB
+from docuflow.modules.compression.service import CompressionService
 from docuflow.modules.documents.extraction import JOB_TYPE as EXTRACT_JOB
 from docuflow.modules.documents.wiring import build_documents
 from docuflow.modules.identity.policy import PolicyService
@@ -98,6 +100,14 @@ def notifications_send_email(job: JobContext) -> None:
     services = get_services()
     sender = build_sender(services.settings)
     NotificationService(services.audit, PolicyService(), sender).run_email(services.db, job)
+
+
+@registry.register(COMPRESS_JOB)
+def compression_run(job: JobContext) -> None:
+    services = get_services()
+    policy = PolicyService()
+    repo = RepositoryService(services.audit, policy)
+    CompressionService(services.audit, policy, repo, services.objects).run(services.db, job)
 
 
 def make_celery(broker_url: str) -> Celery:

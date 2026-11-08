@@ -14,6 +14,8 @@ from docuflow.modules.audit.api import router as audit_router
 from docuflow.modules.audit.service import AuditQueryService
 from docuflow.modules.collaboration.api import router as collaboration_router
 from docuflow.modules.collaboration.service import CollaborationService
+from docuflow.modules.compression.api import router as compression_router
+from docuflow.modules.compression.service import CompressionService
 from docuflow.modules.documents.api import router as documents_router
 from docuflow.modules.documents.relationships import RelationshipService
 from docuflow.modules.documents.wiring import build_documents
@@ -97,6 +99,9 @@ def install(app: FastAPI, services: Services) -> ApiContext:
     app.state.collaboration = CollaborationService(services.audit, ctx.policy, app.state.repo)
     app.state.workflow = WorkflowService(services.audit, ctx.policy, app.state.repo)
     app.state.forms = FormService(services.audit, ctx.policy, app.state.repo)
+    app.state.compression = CompressionService(
+        services.audit, ctx.policy, app.state.repo, services.objects
+    )
     app.state.audit_query = AuditQueryService(services.audit, ctx.policy, app.state.repo)
     app.state.retention = RetentionService(
         services.audit, ctx.policy, app.state.repo, services.objects
@@ -111,6 +116,7 @@ def install(app: FastAPI, services: Services) -> ApiContext:
     app.include_router(collaboration_router)
     app.include_router(workflow_router)
     app.include_router(forms_router)
+    app.include_router(compression_router)
     app.include_router(audit_router)
     app.include_router(retention_router)
     app.include_router(signatures_router)

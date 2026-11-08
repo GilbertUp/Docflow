@@ -381,6 +381,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/compression/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Compression Report
+         * @description Runs, savings and the measurements behind them. Needs the audit.read right.
+         */
+        get: operations["compression_report_api_v1_compression_report_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/delegations": {
         parameters: {
             query?: never;
@@ -674,6 +694,63 @@ export interface paths {
         post?: never;
         /** Delete Comment */
         delete: operations["delete_comment_api_v1_documents__document_id__comments__comment_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{document_id}/compression": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Compression */
+        get: operations["list_compression_api_v1_documents__document_id__compression_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{document_id}/compression/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Compression
+         * @description Makes a smaller copy of the current version in the background. The original is untouched.
+         */
+        post: operations["run_compression_api_v1_documents__document_id__compression_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{document_id}/compression/{derivative_id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Copy
+         * @description A copy that passed the quality check, as an attachment. Needs download and is audited.
+         */
+        get: operations["download_copy_api_v1_documents__document_id__compression__derivative_id__download_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2695,6 +2772,49 @@ export interface components {
             /** Parent Id */
             parent_id: string | null;
         };
+        /** DerivativeOut */
+        DerivativeOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Current Version */
+            current_version: boolean;
+            /** Derivative Size */
+            derivative_size: number;
+            /** Dpi */
+            dpi: number | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Mean Ssim */
+            mean_ssim: number | null;
+            /** Mime */
+            mime: string | null;
+            /** Pages */
+            pages: components["schemas"]["PageOut"][];
+            /** Profile */
+            profile: string | null;
+            /** Reason */
+            reason: string | null;
+            /** Recommended */
+            recommended: boolean;
+            /** Reduction */
+            reduction: number | null;
+            /** Seconds */
+            seconds: number | null;
+            /** Source Size */
+            source_size: number;
+            /** Status */
+            status: string;
+            /** Version Number */
+            version_number: number;
+            /** Worst Ssim */
+            worst_ssim: number | null;
+        };
         /** DestinationModel */
         DestinationModel: {
             /** Cabinet Id */
@@ -3322,6 +3442,23 @@ export interface components {
             items: components["schemas"]["NotificationOut"][];
             /** Unread */
             unread: number;
+        };
+        /** PageOut */
+        PageOut: {
+            /** Kind */
+            kind: string;
+            /** Page */
+            page: number;
+            /** Passed */
+            passed: boolean;
+            /** Psnr */
+            psnr: number;
+            /** Ssim */
+            ssim: number;
+            /** Threshold */
+            threshold: number;
+            /** Treatment */
+            treatment: string;
         };
         /** PageTextOut */
         PageTextOut: {
@@ -4972,6 +5109,37 @@ export interface operations {
             };
         };
     };
+    compression_report_api_v1_compression_report_get: {
+        parameters: {
+            query?: {
+                format?: "json" | "csv";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_delegations_api_v1_delegations_get: {
         parameters: {
             query?: never;
@@ -5585,6 +5753,100 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_compression_api_v1_documents__document_id__compression_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DerivativeOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_compression_api_v1_documents__document_id__compression_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_copy_api_v1_documents__document_id__compression__derivative_id__download_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+                derivative_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
             };
             /** @description Validation Error */
             422: {

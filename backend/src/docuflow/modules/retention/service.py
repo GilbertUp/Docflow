@@ -27,6 +27,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from docuflow.modules.collaboration.models import Task
+from docuflow.modules.compression.models import Derivative
 from docuflow.modules.documents.models import (
     BinaryObject,
     DocumentVersion,
@@ -338,11 +339,12 @@ class RetentionService:
         if not include_released:
             query = query.where(LegalHold.status == "active")
         rows = list(session.scalars(query))
-        counts = dict(
-            session.execute(
+        counts = {
+            key: int(total)
+            for key, total in session.execute(
                 select(LegalHoldItem.hold_id, func.count()).group_by(LegalHoldItem.hold_id)
-            ).tuples()
-        )
+            ).all()
+        }
         return [HoldView(row, int(counts.get(row.id, 0))) for row in rows]
 
     def create_hold(
@@ -622,6 +624,14 @@ class RetentionService:
         session.execute(delete(StampApplication).where(StampApplication.document_id == doc_id))
         session.execute(delete(Signature).where(Signature.document_id == doc_id))
         session.execute(delete(Approval).where(Approval.document_id == doc_id))
+        binary_ids |= set(
+            session.scalars(
+                select(Derivative.binary_object_id).where(
+                    Derivative.version_id.in_(version_ids), Derivative.binary_object_id.is_not(None)
+                )
+            )
+        )
+        session.execute(delete(Derivative).where(Derivative.version_id.in_(version_ids)))
         session.execute(delete(IndexValue).where(IndexValue.document_id == doc_id))
         # A workflow step points at its task, so the steps go before the tasks.
         instances = select(WorkflowInstance.id).where(WorkflowInstance.document_id == doc_id)
@@ -651,6 +661,10 @@ class RetentionService:
                 select(func.count())
                 .select_from(DocumentVersion)
                 .where(DocumentVersion.binary_object_id == binary_id)
+            ) or session.scalar(
+                select(func.count())
+                .select_from(Derivative)
+                .where(Derivative.binary_object_id == binary_id)
             )
             if not still_used:
                 binary = session.get(BinaryObject, binary_id)

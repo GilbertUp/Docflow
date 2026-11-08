@@ -60,6 +60,7 @@ export type DisposalRecord = S["DisposalOut"];
 export type AuditEvents = S["AuditEventsOut"];
 export type AuditEvent = S["AuditEventOut"];
 export type AuditVerification = S["VerifyOut"];
+export type CompressionRun = S["DerivativeOut"];
 export type Suggestions = S["SuggestionsOut"];
 export type SuggestedField = S["SuggestedFieldOut"];
 export type LanguageList = S["LanguagesOut"];

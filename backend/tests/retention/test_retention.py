@@ -517,3 +517,25 @@ def test_a_file_shared_with_another_document_is_kept(
     kept = office["client"].get(f"{API}/documents/{second}/download")
     assert kept.status_code == 200
     assert kept.content.startswith(b"%PDF")
+
+
+def test_the_holds_list_shows_how_many_documents_each_one_covers(
+    app: FastAPI, office: dict[str, Any], db: Database, tenant: uuid.UUID
+) -> None:
+    first = upload(office, "one.pdf", "First held text")["id"]
+    second = upload(office, "two.pdf", "Second held text")["id"]
+    hold = make_hold(office, "Audit 2026")
+    make_hold(office, "Empty hold")
+    for doc in (first, second):
+        added = office["client"].post(
+            f"{API}/legal-holds/{hold['id']}/documents",
+            json={"document_id": doc},
+            headers=office["csrf"],
+        )
+        assert added.status_code == 204
+    listed = {h["name"]: h for h in office["client"].get(f"{API}/legal-holds").json()}
+    assert listed["Audit 2026"]["documents"] == 2
+    assert listed["Empty hold"]["documents"] == 0
+    shown = office["client"].get(f"{API}/legal-holds/{hold['id']}/documents").json()
+    assert shown["total"] == 2
+    assert {d["title"] for d in shown["readable"]} == {"one.pdf", "two.pdf"}

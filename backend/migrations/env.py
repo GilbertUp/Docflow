@@ -8,6 +8,7 @@ from alembic import context
 from sqlalchemy import create_engine, pool
 
 from docuflow.modules.collaboration import models as collaboration_models  # noqa: F401
+from docuflow.modules.compression import models as compression_models  # noqa: F401
 from docuflow.modules.documents import models as documents_models  # noqa: F401
 from docuflow.modules.forms import models as forms_models  # noqa: F401
 from docuflow.modules.identity import models as identity_models  # noqa: F401
