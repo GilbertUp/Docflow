@@ -33,6 +33,8 @@ from moto.server import ThreadedMotoServer
 from sqlalchemy import make_url, select
 
 from docuflow.main import create_app
+from docuflow.modules.compression.service import JOB_TYPE as COMPRESS_JOB
+from docuflow.modules.compression.service import CompressionService
 from docuflow.modules.documents.extraction import JOB_TYPE as EXTRACT_JOB
 from docuflow.modules.documents.imports import JOB_TYPE
 from docuflow.modules.documents.wiring import build_documents
@@ -51,6 +53,8 @@ from docuflow.modules.identity.models import (
 from docuflow.modules.identity.policy import PolicyService, bump_permission_epoch
 from docuflow.modules.indexing.suggest import JOB_TYPE as FIELDS_JOB
 from docuflow.modules.indexing.suggest import SuggestionService
+from docuflow.modules.integrations.service import JOB_TYPE as WEBHOOK_JOB
+from docuflow.modules.integrations.service import WebhookService
 from docuflow.modules.notifications.service import (
     EMAIL_JOB,
     SLA_JOB,
@@ -303,6 +307,19 @@ def seed(services: SimpleNamespace, fixed_password: str | None = None) -> None:
                         effect="allow",
                     )
                 )
+        for cabinet_name in ("Finance", "HR"):
+            cabinet = session.scalar(select(Cabinet).where(Cabinet.name == cabinet_name))
+            assert cabinet is not None
+            session.add(
+                AclEntry(
+                    tenant_id=tenant_id,
+                    anchor_id=cabinet.acl_anchor_id,
+                    principal_type="user",
+                    principal_id=admin.id,
+                    permission="dispose",
+                    effect="allow",
+                )
+            )
         bump_permission_epoch(session, tenant_id)
 
     lines = [f"Organization: {SLUG}"] + [
@@ -327,6 +344,13 @@ def run_jobs_inline(services: SimpleNamespace, stop: threading.Event) -> None:
     registry.register(FIELDS_JOB)(
         lambda job: SuggestionService(services.audit, policy, repo).run(services.db, job)
     )
+    registry.register(COMPRESS_JOB)(
+        lambda job: CompressionService(services.audit, policy, repo, services.objects).run(
+            services.db, job
+        )
+    )
+    hooks = WebhookService(services.audit, policy, services.keys)
+    registry.register(WEBHOOK_JOB)(lambda job: hooks.deliver(services.db, job))
     registry.register(SEARCH_JOB)(
         lambda job: SearchService(services.audit, policy).run(services.db, job)
     )

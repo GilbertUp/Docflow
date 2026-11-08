@@ -78,6 +78,10 @@ class Settings(BaseSettings):
     ai_api_key: SecretStr | None = None
     ai_timeout_seconds: float = Field(default=60.0, gt=0)
 
+    # Webhooks must use https and a public address. Development can allow plain http,
+    # which is still never allowed to reach a private address.
+    webhooks_allow_insecure: bool = False
+
     job_max_attempts: int = 5
     job_heartbeat_timeout_seconds: int = 300
     job_retry_base_seconds: int = 30

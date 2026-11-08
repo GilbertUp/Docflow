@@ -52,6 +52,7 @@ export function Layout() {
           {can("retention.manage") ? <NavLink to="/admin/retention">Retention</NavLink> : null}
           {can("forms.manage") ? <NavLink to="/admin/forms">Manage forms</NavLink> : null}
           {can("integrations.manage") ? <NavLink to="/admin/api-keys">API keys</NavLink> : null}
+          {can("integrations.manage") ? <NavLink to="/admin/webhooks">Webhooks</NavLink> : null}
         </nav>
         <div className="userbox">
           <NavLink to="/account">{me?.user.display_name ?? "Account"}</NavLink>

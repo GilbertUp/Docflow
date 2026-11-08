@@ -12,17 +12,20 @@ import hmac
 import io
 import json
 import uuid
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, BinaryIO, Protocol
 
+import structlog
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from docuflow.platform import context
 from docuflow.platform.db import utcnow
 from docuflow.platform.models import AuditCheckpoint, AuditEvent
+
+log = structlog.get_logger("docuflow.audit")
 
 GENESIS_HASH = "0" * 64
 REDACTED = "[REDACTED]"
@@ -95,9 +98,27 @@ class AuditActor:
     device: str | None = None
 
 
+Listener = Callable[[Session, AuditEvent], None]
+
+
 class AuditLog:
     def __init__(self, root_key: bytes) -> None:
         self._root_key = root_key
+        self._listeners: dict[str, Listener] = {}
+
+    def add_listener(self, listener: Listener, key: str | None = None) -> None:
+        """Calls ``listener(session, event)`` for every event, in the transaction that wrote it.
+
+        This is how other parts of the system react to what was recorded, such as sending webhooks,
+        without the platform knowing about them. A listener that fails is rolled back to its own
+        savepoint and logged. It can never undo the action that was audited.
+
+        A listener has a key, which is its qualified name unless one is given. Adding a listener
+        with a key that is already in use replaces the old one, so wiring the same thing up again,
+        as a test or a restarted worker does, never makes every event fire twice.
+        """
+        name: str = key or str(getattr(listener, "__qualname__", repr(listener)))
+        self._listeners[name] = listener
 
     def record(
         self,
@@ -144,6 +165,12 @@ class AuditLog:
         event.hash = compute_hash(tenant_audit_key(self._root_key, tenant_id), event)
         session.add(event)
         session.flush()
+        for listener in list(self._listeners.values()):
+            try:
+                with session.begin_nested():
+                    listener(session, event)
+            except Exception:
+                log.exception("audit_listener_failed", action=action)
         return event
 
     def verify(self, session: Session, tenant_id: uuid.UUID) -> VerificationResult:

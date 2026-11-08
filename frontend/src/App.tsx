@@ -14,6 +14,7 @@ import { AuditLog } from "./pages/admin/AuditLog";
 import { Operations } from "./pages/admin/Operations";
 import { FormsAdmin } from "./pages/admin/FormsAdmin";
 import { Retention } from "./pages/admin/Retention";
+import { Webhooks } from "./pages/admin/Webhooks";
 import { Workflows } from "./pages/admin/Workflows";
 import { Browser } from "./pages/files/Browser";
 import { CabinetsOverview, FilesLayout } from "./pages/files/FilesLayout";
@@ -71,6 +72,7 @@ export function App() {
           <Route path="admin/roles" element={<Roles />} />
           <Route path="admin/document-types" element={<DocumentTypes />} />
           <Route path="admin/operations" element={<Operations />} />
+          <Route path="admin/webhooks" element={<Webhooks />} />
           <Route path="admin/audit" element={<AuditLog />} />
           <Route path="admin/retention" element={<Retention />} />
           <Route path="admin/forms" element={<FormsAdmin />} />

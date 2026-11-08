@@ -37,6 +37,9 @@ from docuflow.modules.identity.security import RedisRateLimiter
 from docuflow.modules.indexing.api import router as indexing_router
 from docuflow.modules.indexing.service import IndexingService
 from docuflow.modules.indexing.suggest import SuggestionService
+from docuflow.modules.integrations.api import router as integrations_router
+from docuflow.modules.integrations.idempotency import IdempotencyMiddleware
+from docuflow.modules.integrations.service import WebhookService
 from docuflow.modules.notifications.api import router as notifications_router
 from docuflow.modules.notifications.service import NotificationService
 from docuflow.modules.repository.api import router as repository_router
@@ -104,6 +107,15 @@ def install(app: FastAPI, services: Services) -> ApiContext:
     app.state.collaboration = CollaborationService(services.audit, ctx.policy, app.state.repo)
     app.state.workflow = WorkflowService(services.audit, ctx.policy, app.state.repo)
     app.state.forms = FormService(services.audit, ctx.policy, app.state.repo)
+    app.state.webhooks = WebhookService(
+        services.audit,
+        ctx.policy,
+        services.keys,
+        allow_insecure=getattr(services.settings, "webhooks_allow_insecure", False),
+    )
+    # Every recorded event is offered to the webhooks that asked for it.
+    services.audit.add_listener(app.state.webhooks.on_event, "webhooks")
+    app.add_middleware(IdempotencyMiddleware, db=services.db)
     app.state.admin = AdminService(services.audit, ctx.policy)
     app.state.assistant = AssistantService(
         services.audit, ctx.policy, app.state.repo, build_provider(services.settings)
@@ -125,6 +137,7 @@ def install(app: FastAPI, services: Services) -> ApiContext:
     app.include_router(collaboration_router)
     app.include_router(workflow_router)
     app.include_router(forms_router)
+    app.include_router(integrations_router)
     app.include_router(admin_router)
     app.include_router(assistant_router)
     app.include_router(compression_router)

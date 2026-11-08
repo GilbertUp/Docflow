@@ -16,6 +16,7 @@ import httpx
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "backend"))
+from tests.compression import scans  # noqa: E402
 from tests.documents.files import text_pdf  # noqa: E402
 
 BASE = "http://127.0.0.1:5173/api/v1"
@@ -45,7 +46,13 @@ def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     for name, pages in DOCUMENTS.items():
         (OUT / name).write_bytes(text_pdf(pages))
-    print(f"Wrote {len(DOCUMENTS)} dummy documents to {OUT}")
+    # A scan of a delivery note, stored the heavy way, so that compressing it shows a big saving.
+    (OUT / "scan-delivery-note.pdf").write_bytes(
+        scans.grey_flate_pdf(
+            [scans.text_page(11), scans.text_page(12), scans.text_page(13)]
+        )
+    )
+    print(f"Wrote {len(DOCUMENTS) + 1} dummy documents to {OUT}")
 
     creds = (ROOT / ".data" / "demo" / "credentials.txt").read_text(encoding="utf-8")
     found = re.search(r"admin@example.com\s+/\s+(\S+)", creds)
@@ -55,7 +62,11 @@ def main() -> int:
     client = httpx.Client(timeout=60)
     login = client.post(
         f"{BASE}/auth/login",
-        json={"organization": "demo", "email": "admin@example.com", "password": found.group(1)},
+        json={
+            "organization": "demo",
+            "email": "admin@example.com",
+            "password": found.group(1),
+        },
     )
     login.raise_for_status()
     headers = {"X-CSRF-Token": login.json()["csrf_token"]}
@@ -116,19 +127,34 @@ def main() -> int:
             "name": "Invoice approval",
             "description": "Finance check, then admin sign-off",
             "steps": [
-                {"name": "Finance check", "kind": "approval", "assignee_id": people["Felix"], "due_days": 2},
-                {"name": "Final approval", "kind": "approval", "assignee_id": people["Admin"], "due_days": 3},
+                {
+                    "name": "Finance check",
+                    "kind": "approval",
+                    "assignee_id": people["Felix"],
+                    "due_days": 2,
+                },
+                {
+                    "name": "Final approval",
+                    "kind": "approval",
+                    "assignee_id": people["Admin"],
+                    "due_days": 3,
+                },
             ],
         },
         "Invoice approval",
     )
-    for name, text, color in (("Approved", "APPROVED", "green"), ("Paid", "PAID", "blue")):
+    for name, text, color in (
+        ("Approved", "APPROVED", "green"),
+        ("Paid", "PAID", "blue"),
+    ):
         stamps = client.get(f"{BASE}/stamps", params={"include_archived": True}).json()
         if any(s["name"] == name for s in stamps):
             print(f"  already there: stamp {name}")
         else:
             client.post(
-                f"{BASE}/stamps", json={"name": name, "text": text, "color": color}, headers=headers
+                f"{BASE}/stamps",
+                json={"name": name, "text": text, "color": color},
+                headers=headers,
             ).raise_for_status()
             print(f"  created: stamp {name}")
     ensure(
@@ -137,18 +163,64 @@ def main() -> int:
             "name": "Leave request",
             "description": "Ask for time off",
             "fields": [
-                {"key": "days", "label": "Days off", "data_type": "number", "required": True,
-                 "validation": {"min": 1, "max": 30}},
-                {"key": "first_day", "label": "First day", "data_type": "date", "required": True},
-                {"key": "kind", "label": "Kind", "data_type": "choice",
-                 "choices": [{"value": "annual", "label": "Annual"}, {"value": "sick", "label": "Sick"}]},
+                {
+                    "key": "days",
+                    "label": "Days off",
+                    "data_type": "number",
+                    "required": True,
+                    "validation": {"min": 1, "max": 30},
+                },
+                {
+                    "key": "first_day",
+                    "label": "First day",
+                    "data_type": "date",
+                    "required": True,
+                },
+                {
+                    "key": "kind",
+                    "label": "Kind",
+                    "data_type": "choice",
+                    "choices": [
+                        {"value": "annual", "label": "Annual"},
+                        {"value": "sick", "label": "Sick"},
+                    ],
+                },
             ],
         },
         "Leave request",
     )
+    ensure(
+        "retention-classes",
+        {
+            "name": "Invoices 7 years",
+            "description": "Keep supplier invoices for seven years",
+            "duration_days": 2555,
+            "trigger": "created",
+        },
+        "Invoices 7 years",
+    )
+    ensure(
+        "retention-classes",
+        {
+            "name": "Short-lived notes (1 day)",
+            "description": "For showing disposal in a demo. Real classes are measured in years.",
+            "duration_days": 1,
+            "trigger": "created",
+        },
+        "Short-lived notes (1 day)",
+    )
+    ensure(
+        "legal-holds",
+        {"name": "Audit 2026", "reason": "External audit of supplier payments"},
+        "Audit 2026",
+    )
     client.put(
         f"{BASE}/sla-policy",
-        json={"reminder_before_hours": 24, "escalate_after_hours": 24, "escalate_to_user_id": people["Admin"]},
+        json={
+            "reminder_before_hours": 24,
+            "escalate_after_hours": 24,
+            "escalate_to_user_id": people["Admin"],
+        },
         headers=headers,
     )
     print("  deadlines: remind 24h before, escalate to Admin 24h after")
@@ -158,7 +230,11 @@ def main() -> int:
     finance = next(c for c in cabinets if c["name"] == "Finance")
     folders = client.get(f"{BASE}/cabinets/{finance['id']}/children").json()["folders"]
     folder = next(f for f in folders if f["name"] == "Supplier Invoices")["id"]
-    probe = text_pdf(["TAX INVOICE   Supplier Probe Ltd   Invoice no INV-9999   Due 2026-12-31   Total 1.00"])
+    probe = text_pdf(
+        [
+            "TAX INVOICE   Supplier Probe Ltd   Invoice no INV-9999   Due 2026-12-31   Total 1.00"
+        ]
+    )
     up = client.post(
         f"{BASE}/folders/{folder}/documents",
         params={"filename": "check-setup.pdf"},
@@ -173,7 +249,9 @@ def main() -> int:
         if shown.get("fields"):
             filled = {f["key"]: f["value"] for f in shown["fields"]}
             break
-    print(f"Setup check: type proposed and values found: {filled or 'NOTHING (check the log)'}")
+    print(
+        f"Setup check: type proposed and values found: {filled or 'NOTHING (check the log)'}"
+    )
     return 0 if filled else 2
 
 

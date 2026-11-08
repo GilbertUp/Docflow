@@ -18,6 +18,8 @@ from docuflow.modules.documents.wiring import build_documents
 from docuflow.modules.identity.policy import PolicyService
 from docuflow.modules.indexing.suggest import JOB_TYPE as FIELDS_JOB
 from docuflow.modules.indexing.suggest import SuggestionService
+from docuflow.modules.integrations.service import JOB_TYPE as WEBHOOK_JOB
+from docuflow.modules.integrations.service import WebhookService
 from docuflow.modules.notifications.service import (
     EMAIL_JOB,
     SLA_JOB,
@@ -29,7 +31,7 @@ from docuflow.modules.search.service import JOB_TYPE as SEARCH_JOB
 from docuflow.modules.search.service import SearchService
 from docuflow.modules.workflow.service import JOB_TYPE as WORKFLOW_JOB
 from docuflow.modules.workflow.service import WorkflowService
-from docuflow.platform.bootstrap import get_services
+from docuflow.platform import bootstrap
 from docuflow.platform.jobs import (
     DISPATCH_TOPIC,
     WORKER_HEARTBEAT_INTERVAL_SECONDS,
@@ -39,6 +41,23 @@ from docuflow.platform.jobs import (
     JobContext,
     JobRunner,
 )
+
+
+def _webhooks(services: bootstrap.Services) -> WebhookService:
+    return WebhookService(
+        services.audit,
+        PolicyService(),
+        services.keys,
+        allow_insecure=services.settings.webhooks_allow_insecure,
+    )
+
+
+def get_services() -> bootstrap.Services:
+    """The shared services, with webhooks listening to the audit trail."""
+    services = bootstrap.get_services()
+    services.audit.add_listener(_webhooks(services).on_event, "webhooks")
+    return services
+
 
 registry = HandlerRegistry()
 log = structlog.get_logger("docuflow.worker")
@@ -108,6 +127,12 @@ def compression_run(job: JobContext) -> None:
     policy = PolicyService()
     repo = RepositoryService(services.audit, policy)
     CompressionService(services.audit, policy, repo, services.objects).run(services.db, job)
+
+
+@registry.register(WEBHOOK_JOB)
+def integrations_deliver_webhook(job: JobContext) -> None:
+    services = get_services()
+    _webhooks(services).deliver(services.db, job)
 
 
 def make_celery(broker_url: str) -> Celery:
