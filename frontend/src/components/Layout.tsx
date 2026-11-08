@@ -44,6 +44,7 @@ export function Layout() {
           {can("document_types.manage") ? (
             <NavLink to="/admin/document-types">Document types</NavLink>
           ) : null}
+          <NavLink to="/admin/workflows">Workflows</NavLink>
           {can("integrations.manage") ? <NavLink to="/admin/api-keys">API keys</NavLink> : null}
         </nav>
         <div className="userbox">

@@ -874,6 +874,19 @@ class IndexingService:
         from docuflow.modules.indexing.suggest import settle_suggestions
 
         request_search_row(session, principal.tenant_id, document.id)
+        if newly_typed:
+            enqueue(
+                session,
+                principal.tenant_id,
+                "workflow.document_typed",
+                f"wf-typed:{document.id}:{uuid.uuid4().hex}",
+                queue="system",
+                payload={
+                    "document_id": str(document.id),
+                    "type_id": str(type_id),
+                    "user_id": str(principal.user_id),
+                },
+            )
 
         settle_suggestions(
             session,

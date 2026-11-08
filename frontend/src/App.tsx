@@ -9,6 +9,7 @@ import { Groups } from "./pages/admin/Groups";
 import { DocumentTypes } from "./pages/admin/DocumentTypes";
 import { Roles } from "./pages/admin/Roles";
 import { Users } from "./pages/admin/Users";
+import { Workflows } from "./pages/admin/Workflows";
 import { Browser } from "./pages/files/Browser";
 import { CabinetsOverview, FilesLayout } from "./pages/files/FilesLayout";
 import { Login } from "./pages/Login";
@@ -60,6 +61,7 @@ export function App() {
           <Route path="admin/groups" element={<Groups />} />
           <Route path="admin/roles" element={<Roles />} />
           <Route path="admin/document-types" element={<DocumentTypes />} />
+          <Route path="admin/workflows" element={<Workflows />} />
           <Route path="admin/api-keys" element={<ApiKeys />} />
           <Route path="account" element={<Account />} />
           <Route path="*" element={<NotFound />} />

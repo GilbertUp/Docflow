@@ -801,3 +801,12 @@ textarea {
   margin: 0.25rem 0;
   white-space: pre-wrap;
 }
+
+/* Workflow */
+.workflow-run {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border, #d0d4dc);
+}
+.workflow-steps li {
+  padding: 0.25rem 0;
+}

@@ -457,6 +457,8 @@ class CollaborationService:
                 f"Task for you: {task.title}",
             )
         if status is not None and status != task.status:
+            if task.workflow_step_id is not None:
+                raise Conflict("This task belongs to a workflow. Decide its step instead.")
             if status not in STATUSES:
                 raise DomainError("The status must be open, done or cancelled.")
             allowed = (

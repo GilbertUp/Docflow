@@ -38,6 +38,10 @@ export type CommentRow = S["CommentOut"];
 export type Person = S["PersonOut"];
 export type TaskRow = S["TaskOut"];
 export type NotificationList = S["NotificationsOut"];
+export type WorkflowRow = S["WorkflowOut"];
+export type WorkflowInstance = S["InstanceOut"];
+export type PersonRow = S["PersonOut"];
+export type DelegationRow = S["DelegationOut"];
 export type Suggestions = S["SuggestionsOut"];
 export type SuggestedField = S["SuggestedFieldOut"];
 export type LanguageList = S["LanguagesOut"];
@@ -88,4 +92,5 @@ export const SYSTEM_PERMISSIONS = [
   ["audit.read", "Read and export the audit trail"],
   ["integrations.manage", "Manage API keys and identity providers"],
   ["document_types.manage", "Create document types and change their fields"],
+  ["workflows.manage", "Create workflows and change their steps"],
 ] as const;

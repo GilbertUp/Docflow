@@ -19,6 +19,8 @@ from docuflow.modules.indexing.suggest import SuggestionService
 from docuflow.modules.repository.service import RepositoryService
 from docuflow.modules.search.service import JOB_TYPE as SEARCH_JOB
 from docuflow.modules.search.service import SearchService
+from docuflow.modules.workflow.service import JOB_TYPE as WORKFLOW_JOB
+from docuflow.modules.workflow.service import WorkflowService
 from docuflow.platform.bootstrap import get_services
 from docuflow.platform.jobs import (
     DISPATCH_TOPIC,
@@ -69,6 +71,14 @@ def indexing_extract_fields(job: JobContext) -> None:
 def search_index_document(job: JobContext) -> None:
     services = get_services()
     SearchService(services.audit, PolicyService()).run(services.db, job)
+
+
+@registry.register(WORKFLOW_JOB)
+def workflow_document_typed(job: JobContext) -> None:
+    services = get_services()
+    policy = PolicyService()
+    repo = RepositoryService(services.audit, policy)
+    WorkflowService(services.audit, policy, repo).run(services.db, job)
 
 
 def make_celery(broker_url: str) -> Celery:

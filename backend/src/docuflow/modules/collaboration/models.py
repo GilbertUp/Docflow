@@ -60,6 +60,8 @@ class Task(IdMixin, TimestampMixin, Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     completed_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
     row_version: Mapped[int] = mapped_column(Integer, default=1)
+    # Set when a workflow made the task. Such a task is finished by deciding its step.
+    workflow_step_id: Mapped[uuid.UUID | None] = mapped_column()
 
 
 class Notification(IdMixin, TimestampMixin, Base):
@@ -67,7 +69,9 @@ class Notification(IdMixin, TimestampMixin, Base):
 
     __tablename__ = "notification"
     __table_args__ = (
-        CheckConstraint("kind IN ('task_assigned', 'task_done', 'mention')", name="kind"),
+        CheckConstraint(
+            "kind IN ('task_assigned', 'task_done', 'mention', 'workflow_finished')", name="kind"
+        ),
         Index("ix_notification_user", "tenant_id", "user_id", "read_at", "created_at"),
     )
 
