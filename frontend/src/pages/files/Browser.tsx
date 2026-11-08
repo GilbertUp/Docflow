@@ -9,6 +9,7 @@ import type {
   Crumb,
   FolderDetail,
   Stats,
+  DocumentTypeRow,
   ImportResult,
   UploadResult,
 } from "../../api/types";
@@ -21,8 +22,15 @@ import {
   formatBytes,
   formatDate,
 } from "../../components/ui";
+import { useAuth } from "../../auth/AuthContext";
 import { AclDialog } from "./AclDialog";
 import { ImportPanel } from "./ImportPanel";
+import { DetailsDialog } from "./DetailsDialog";
+import { DiscussionDialog } from "./DiscussionDialog";
+import { LinksDialog } from "./LinksDialog";
+import { PreviewDialog } from "./PreviewDialog";
+import { WorkflowDialog } from "./WorkflowDialog";
+import { TextDialog } from "./TextDialog";
 import { VersionsDialog } from "./VersionsDialog";
 import {
   DeleteDialog,
@@ -44,6 +52,12 @@ type DialogState =
   | { kind: "delete"; target: Target }
   | { kind: "acl" }
   | { kind: "versions"; id: string; title: string }
+  | { kind: "text"; id: string; title: string }
+  | { kind: "preview"; id: string; title: string }
+  | { kind: "links"; id: string; title: string }
+  | { kind: "discuss"; id: string; title: string }
+  | { kind: "workflow"; id: string; title: string }
+  | { kind: "details"; id: string; title: string }
   | null;
 
 interface Container {
@@ -121,6 +135,13 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
     onSuccess: (result) => setImporting({ where: `${kind}:${id}`, id: result.id }),
   });
 
+  const types = useQuery({
+    queryKey: ["document-types"],
+    queryFn: () => api.get<DocumentTypeRow[]>("/document-types", { query: { include_archived: true } }),
+  });
+  const typeName = (id: string | null | undefined) =>
+    id ? (types.data?.find((item) => item.id === id)?.name ?? "—") : "—";
+
   const upload = useMutation({
     mutationFn: async (files: File[]) => {
       // One at a time keeps memory low and the messages in the order the files were chosen.
@@ -172,6 +193,7 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
   }
 
   const container = toContainer(kind, detail.data);
+  const { me } = useAuth();
   const can = (permission: string) => container.permissions.includes(permission);
   const self: Target = {
     type: container.type,
@@ -461,6 +483,9 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
                 <thead>
                   <tr>
                     <th scope="col">Title</th>
+                    <th scope="col" className="hide-narrow">
+                      Type
+                    </th>
                     <th scope="col">Size</th>
                     <th scope="col">Filed</th>
                     <th scope="col">
@@ -477,6 +502,7 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
                           <span className="badge badge-warn">Archived</span>
                         ) : null}
                       </td>
+                      <td className="hide-narrow">{typeName(document.document_type_id)}</td>
                       <td>{formatBytes(document.size_bytes)}</td>
                       <td>{formatDate(document.created_at)}</td>
                       <td className="actions">
@@ -488,6 +514,64 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
                           >
                             Download<span className="sr-only"> {document.title}</span>
                           </a>
+                        ) : null}
+                        <button
+                          type="button"
+                          className="btn btn-quiet"
+                          onClick={() =>
+                            setDialog({ kind: "details", id: document.id, title: document.title })
+                          }
+                        >
+                          Details<span className="sr-only"> of {document.title}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-quiet"
+                          onClick={() =>
+                            setDialog({ kind: "workflow", id: document.id, title: document.title })
+                          }
+                        >
+                          Workflow<span className="sr-only"> of {document.title}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-quiet"
+                          onClick={() =>
+                            setDialog({ kind: "discuss", id: document.id, title: document.title })
+                          }
+                        >
+                          Discuss<span className="sr-only"> {document.title}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-quiet"
+                          onClick={() =>
+                            setDialog({ kind: "links", id: document.id, title: document.title })
+                          }
+                        >
+                          Links<span className="sr-only"> of {document.title}</span>
+                        </button>
+                        {can("preview") ? (
+                          <button
+                            type="button"
+                            className="btn btn-quiet"
+                            onClick={() =>
+                              setDialog({ kind: "preview", id: document.id, title: document.title })
+                            }
+                          >
+                            View<span className="sr-only"> {document.title}</span>
+                          </button>
+                        ) : null}
+                        {can("preview") ? (
+                          <button
+                            type="button"
+                            className="btn btn-quiet"
+                            onClick={() =>
+                              setDialog({ kind: "text", id: document.id, title: document.title })
+                            }
+                          >
+                            Text<span className="sr-only"> of {document.title}</span>
+                          </button>
                         ) : null}
                         <button
                           type="button"
@@ -575,6 +659,51 @@ export function Browser({ kind }: { kind: "cabinet" | "folder" }) {
       ) : null}
       {dialog?.kind === "acl" ? (
         <AclDialog anchorId={container.anchorId} title={container.name} onClose={() => setDialog(null)} />
+      ) : null}
+      {dialog?.kind === "details" ? (
+        <DetailsDialog
+          documentId={dialog.id}
+          title={dialog.title}
+          canEdit={can("edit_metadata") && !archived}
+          onClose={() => setDialog(null)}
+        />
+      ) : null}
+      {dialog?.kind === "workflow" ? (
+        <WorkflowDialog
+          documentId={dialog.id}
+          title={dialog.title}
+          canStart={can("edit_metadata") && !archived}
+          userId={me?.user.id ?? ""}
+          onClose={() => setDialog(null)}
+        />
+      ) : null}
+      {dialog?.kind === "discuss" ? (
+        <DiscussionDialog
+          documentId={dialog.id}
+          title={dialog.title}
+          canComment={can("annotate") && !archived}
+          canAssign={can("edit_metadata") && !archived}
+          onClose={() => setDialog(null)}
+        />
+      ) : null}
+      {dialog?.kind === "links" ? (
+        <LinksDialog
+          documentId={dialog.id}
+          title={dialog.title}
+          canEdit={can("edit_metadata") && !archived}
+          onClose={() => setDialog(null)}
+        />
+      ) : null}
+      {dialog?.kind === "preview" ? (
+        <PreviewDialog documentId={dialog.id} title={dialog.title} onClose={() => setDialog(null)} />
+      ) : null}
+      {dialog?.kind === "text" ? (
+        <TextDialog
+          documentId={dialog.id}
+          title={dialog.title}
+          canReprocess={can("edit_metadata") && !archived}
+          onClose={() => setDialog(null)}
+        />
       ) : null}
       {dialog?.kind === "versions" ? (
         <VersionsDialog

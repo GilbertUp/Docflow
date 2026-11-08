@@ -15,6 +15,7 @@ import {
   formatDate,
 } from "../../components/ui";
 import { useRefreshFiles } from "./dialogs";
+import { stateLabel } from "./TextDialog";
 
 /** The history of one document, and a way to add a new version. */
 export function VersionsDialog({
@@ -58,6 +59,16 @@ export function VersionsDialog({
     },
   });
 
+  const restore = useMutation({
+    mutationFn: (number: number) =>
+      api.post<VersionResult>(`/documents/${documentId}/versions/${number}/restore`, {}),
+    onSuccess: (result) => {
+      setAdded(result.version.number);
+      void queryClient.invalidateQueries({ queryKey: ["versions", documentId] });
+      refresh();
+    },
+  });
+
   // Newest first, because that is what people look for.
   const rows = [...(versions.data ?? [])].reverse();
   const current = rows[0]?.number;
@@ -77,6 +88,7 @@ export function VersionsDialog({
                 <th scope="col">Size</th>
                 <th scope="col">Added</th>
                 <th scope="col">Reason</th>
+                <th scope="col">Text</th>
                 <th scope="col">
                   <span className="sr-only">Actions</span>
                 </th>
@@ -93,6 +105,7 @@ export function VersionsDialog({
                   <td>{formatBytes(row.size_bytes)}</td>
                   <td>{formatDate(row.created_at)}</td>
                   <td>{row.reason || "—"}</td>
+                  <td>{stateLabel(row.text_state)}</td>
                   <td className="actions">
                     {canDownload ? (
                       <a
@@ -103,6 +116,19 @@ export function VersionsDialog({
                         Download<span className="sr-only"> version {row.number}</span>
                       </a>
                     ) : null}
+                    {canAdd && row.number !== current ? (
+                      <button
+                        type="button"
+                        className="btn btn-quiet"
+                        disabled={restore.isPending}
+                        onClick={() => {
+                          setAdded(null);
+                          restore.mutate(row.number);
+                        }}
+                      >
+                        Restore<span className="sr-only"> version {row.number}</span>
+                      </button>
+                    ) : null}
                   </td>
                 </tr>
               ))}
@@ -111,6 +137,7 @@ export function VersionsDialog({
         </div>
       ) : null}
 
+      <ErrorNotice error={restore.error} />
       {canAdd ? (
         <Form
           onSubmit={() => {

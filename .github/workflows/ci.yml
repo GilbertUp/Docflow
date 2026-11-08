@@ -35,6 +35,10 @@ jobs:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: backend/pyproject.toml
+      - name: Install the OCR engine and a few language packs
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends             tesseract-ocr tesseract-ocr-eng tesseract-ocr-fra tesseract-ocr-deu tesseract-ocr-spa fonts-dejavu-core
       - run: pip install -e ".[dev]"
       - name: Lint
         run: ruff check . && ruff format --check .
@@ -122,6 +126,8 @@ jobs:
     timeout-minutes: 15
     env:
       COMPOSE: docker compose --env-file .env -f deploy/compose.yaml -f deploy/compose.ci.yaml
+      # A short list keeps the image build quick. The default list is for real deployments.
+      OCR_LANGUAGES: "eng fra deu"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -152,6 +158,8 @@ jobs:
       - name: Live job through Redis and Celery
         timeout-minutes: 4
         run: sh scripts/ci-live-job.sh
+      - name: OCR engine and language packs in the image
+        run: $COMPOSE exec -T worker docuflow ocr-check eng fra deu
       - name: S3 conformance on the real backend
         timeout-minutes: 6
         working-directory: backend

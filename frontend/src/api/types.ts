@@ -25,6 +25,32 @@ export type DocumentRow = S["DocumentOut"];
 export type UploadResult = S["UploadResult"];
 export type VersionRow = S["VersionOut"];
 export type ImportResult = S["ImportOut"];
+export type TextResult = S["TextOut"];
+export type DocumentTypeRow = S["TypeOut"];
+export type FieldDefinition = S["FieldModel"];
+export type IndexField = S["IndexFieldOut"];
+export type IndexResult = S["IndexOut"];
+export type PreviewInfo = S["PreviewOut"];
+export type SearchResult = S["SearchOut"];
+export type DocumentLink = S["LinkOut"];
+export type LinkType = S["LinkTypeOut"];
+export type CommentRow = S["CommentOut"];
+export type Person = S["PersonOut"];
+export type TaskRow = S["TaskOut"];
+export type NotificationList = S["NotificationsOut"];
+export type WorkflowRow = S["WorkflowOut"];
+export type WorkflowInstance = S["InstanceOut"];
+export type PersonRow = S["PersonOut"];
+export type DelegationRow = S["DelegationOut"];
+export type FormRow = S["FormOut"];
+export type FormFieldRow = S["FormFieldModel"];
+export type SubmissionRow = S["SubmissionOut"];
+export type PreferenceRow = S["PreferenceOut"];
+export type SlaPolicyRow = S["SlaOut"];
+export type DeliveryRow = S["DeliveryOut"];
+export type Suggestions = S["SuggestionsOut"];
+export type SuggestedField = S["SuggestedFieldOut"];
+export type LanguageList = S["LanguagesOut"];
 export type VersionResult = S["VersionResult"];
 export type Children = S["ChildrenOut"];
 export type Stats = S["StatsOut"];
@@ -71,4 +97,7 @@ export const SYSTEM_PERMISSIONS = [
   ["cabinets.manage", "Create and change cabinets"],
   ["audit.read", "Read and export the audit trail"],
   ["integrations.manage", "Manage API keys and identity providers"],
+  ["document_types.manage", "Create document types and change their fields"],
+  ["workflows.manage", "Create workflows and change their steps"],
+  ["forms.manage", "Create forms and see every submission"],
 ] as const;

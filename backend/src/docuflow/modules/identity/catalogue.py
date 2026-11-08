@@ -10,6 +10,9 @@ SYSTEM_PERMISSIONS: dict[str, str] = {
     "cabinets.manage": "Create and change cabinets",
     "audit.read": "Read and export the audit trail",
     "integrations.manage": "Manage API keys and identity providers",
+    "document_types.manage": "Create document types and change the fields they have",
+    "workflows.manage": "Create workflows and change their steps",
+    "forms.manage": "Create forms and see every submission",
 }
 
 RESOURCE_PERMISSIONS: dict[str, str] = {

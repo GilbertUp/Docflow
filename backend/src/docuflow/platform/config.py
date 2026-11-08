@@ -49,11 +49,26 @@ class Settings(BaseSettings):
     max_import_bytes: int = Field(default=512 * 1024 * 1024, gt=0)
     import_max_entries: int = Field(default=1000, gt=0)
     import_max_expanded_mb: int = Field(default=1024, gt=0)
+    # Text extraction (F04). Languages are Tesseract codes, for example eng, fra, deu, chi_sim.
+    ocr_default_languages: str = "eng,fra"
+    ocr_max_languages_per_run: int = Field(default=5, gt=0)
+    ocr_dpi: int = Field(default=300, ge=72, le=600)
+    ocr_max_pages: int = Field(default=500, gt=0)
+    ocr_page_timeout_seconds: int = Field(default=180, gt=0)
+    tesseract_binary: str = "tesseract"
     # "none" is for development and tests. Production must scan.
     scanner: Literal["none", "clamav"] = "none"
     clamav_host: str = "clamav"
     clamav_port: int = 3310
     clamav_timeout_seconds: float = Field(default=60.0, gt=0)
+
+    # Email (F13). Without a host, notifications stay in the app and email ends as failed.
+    smtp_host: str | None = None
+    smtp_port: int = Field(default=587, gt=0, lt=65536)
+    smtp_username: str | None = None
+    smtp_password: SecretStr | None = None
+    smtp_from: str = "docuflow@localhost"
+    smtp_starttls: bool = True
 
     job_max_attempts: int = 5
     job_heartbeat_timeout_seconds: int = 300

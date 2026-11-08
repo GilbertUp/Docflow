@@ -24,6 +24,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from docuflow.modules.documents.extraction import request_extraction
 from docuflow.modules.documents.models import BinaryObject, DocumentVersion
 from docuflow.modules.documents.scanner import Scanner
 from docuflow.modules.identity.auth import Principal
@@ -360,6 +361,7 @@ class DocumentService:
             session.add(version)
             session.flush()
             document.current_version_id = version.id
+            request_extraction(session, principal.tenant_id, version, binary.mime)
             self._record(
                 session,
                 principal,
@@ -420,6 +422,7 @@ class DocumentService:
             session.add(version)
             session.flush()
             document.current_version_id = version.id
+            request_extraction(session, principal.tenant_id, version, binary.mime)
             document.size_bytes = binary.size_bytes
             document.row_version += 1
             self._record(
@@ -438,6 +441,71 @@ class DocumentService:
             )
             session.flush()
             return VersionAdded(document, version, duplicate)
+
+    def restore_version(
+        self, db: Database, principal: Principal, document_id: uuid.UUID, number: int
+    ) -> VersionAdded:
+        """Makes an earlier version current again, as a new version. History is never rewritten."""
+        with db.tenant_session(principal.tenant_id) as session:
+            document = self._repo.document_for_change(
+                session, principal, document_id, "version", lock=True
+            )
+            source = session.scalar(
+                select(DocumentVersion).where(
+                    DocumentVersion.document_id == document_id, DocumentVersion.number == number
+                )
+            )
+            if source is None:
+                raise NotFound("That version does not exist.")
+            if source.state != "released":
+                raise Conflict("Only a released version can be restored.")
+            if document.current_version_id == source.id:
+                raise Conflict("That is already the current version.")
+            current = (
+                session.get(DocumentVersion, document.current_version_id)
+                if document.current_version_id
+                else None
+            )
+            if current is not None and current.binary_object_id == source.binary_object_id:
+                raise Conflict("The current version already has that file.")
+            binary = session.get(BinaryObject, source.binary_object_id)
+            if binary is None:
+                raise NotFound("The file of that version is no longer stored.")
+            binary.ref_count += 1
+            newest = (
+                session.scalar(
+                    select(func.max(DocumentVersion.number)).where(
+                        DocumentVersion.document_id == document_id
+                    )
+                )
+                or 0
+            ) + 1
+            version = DocumentVersion(
+                tenant_id=principal.tenant_id,
+                document_id=document_id,
+                number=newest,
+                binary_object_id=binary.id,
+                original_filename=source.original_filename,
+                reason=f"Restored from version {number}",
+                scan_engine=source.scan_engine,
+                state="released",
+                created_by=principal.user_id,
+            )
+            session.add(version)
+            session.flush()
+            document.current_version_id = version.id
+            document.size_bytes = binary.size_bytes
+            document.row_version += 1
+            request_extraction(session, principal.tenant_id, version, binary.mime)
+            self._record(
+                session,
+                principal,
+                "document.version_restored",
+                document_id,
+                {"number": newest, "restored_from": number, "sha256": binary.sha256},
+            )
+            session.flush()
+            return VersionAdded(document, version, False)
 
     def _readable_match(
         self, session: Session, principal: Principal, binary_id: uuid.UUID

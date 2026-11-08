@@ -101,5 +101,10 @@ class Document(IdMixin, TimestampMixin, Base):
             name="fk_document_current_version_id_document_version",
         )
     )
+    # What kind of document this is, and the field set its values were written against (F06).
+    document_type_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("document_type.id"))
+    schema_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("index_schema_version.id")
+    )
     row_version: Mapped[int] = mapped_column(Integer, default=1)
     created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))

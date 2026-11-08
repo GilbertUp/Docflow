@@ -9,13 +9,26 @@ from typing import Annotated, BinaryIO, cast
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Query, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from starlette.concurrency import run_in_threadpool
 
+from docuflow.modules.documents.extraction import ExtractionService
 from docuflow.modules.documents.imports import ImportService, ImportView
+from docuflow.modules.documents.preview import PreviewService
+from docuflow.modules.documents.relationships import RELATION_TYPES, Link, RelationshipService
 from docuflow.modules.documents.schemas import (
+    AddLinkRequest,
     ImportItemOut,
     ImportOut,
+    LanguagesOut,
+    LinkedDocumentOut,
+    LinkOut,
+    LinkTypeOut,
+    PageTextOut,
+    PreviewOut,
+    PreviewPageOut,
+    TextOut,
+    TextRequestOut,
     UploadResult,
     VersionOut,
     VersionResult,
@@ -41,6 +54,21 @@ def get_documents(request: Request) -> DocumentService:
     return service
 
 
+def get_text(request: Request) -> ExtractionService:
+    service: ExtractionService = request.app.state.text
+    return service
+
+
+def get_preview(request: Request) -> PreviewService:
+    service: PreviewService = request.app.state.preview
+    return service
+
+
+def get_relationships(request: Request) -> RelationshipService:
+    service: RelationshipService = request.app.state.relationships
+    return service
+
+
 def get_imports(request: Request) -> ImportService:
     service: ImportService = request.app.state.imports
     return service
@@ -48,6 +76,9 @@ def get_imports(request: Request) -> ImportService:
 
 Docs = Annotated[DocumentService, Depends(get_documents)]
 Imports = Annotated[ImportService, Depends(get_imports)]
+Text = Annotated[ExtractionService, Depends(get_text)]
+Preview = Annotated[PreviewService, Depends(get_preview)]
+Relations = Annotated[RelationshipService, Depends(get_relationships)]
 Filename = Annotated[str, Query(min_length=1, max_length=300)]
 Reason = Annotated[str, Query(max_length=500)]
 
@@ -87,6 +118,7 @@ def _version_out(info: VersionInfo) -> VersionOut:
         state=info.version.state,
         reason=info.version.reason,
         scan_engine=info.version.scan_engine,
+        text_state=info.version.text_state,
         size_bytes=info.size_bytes,
         mime=info.mime,
         created_at=info.version.created_at,
@@ -285,3 +317,147 @@ def get_import(import_id: uuid.UUID, ctx: Ctx, imports: Imports, who: User_) -> 
     """Progress and results of an import. Only the person who started it can read it."""
     with ctx.services.db.tenant_session(who.tenant_id) as session:
         return _import_out(imports.get(session, who, import_id))
+
+
+@router.get("/ocr/languages")
+def ocr_languages(text: Text, who: User_) -> LanguagesOut:
+    """The languages this server can read, and the defaults used when none is chosen."""
+    info = text.language_info()
+    return LanguagesOut(**vars(info))
+
+
+@router.get("/documents/{document_id}/text")
+def document_text(
+    document_id: uuid.UUID,
+    ctx: Ctx,
+    text: Text,
+    who: User_,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> TextOut:
+    """The text of the current version, page by page. Needs the preview right and is audited."""
+    with ctx.services.db.tenant_session(who.tenant_id) as session:
+        view = text.read(session, who, document_id, limit, offset)
+    return TextOut(
+        version=view.version_number,
+        state=view.state,
+        error=view.error,
+        total_pages=view.total_pages,
+        pages=[PageTextOut(**vars(page)) for page in view.pages],
+    )
+
+
+@router.post("/documents/{document_id}/text/reprocess", status_code=202)
+async def reprocess_text(
+    document_id: uuid.UUID,
+    ctx: Ctx,
+    text: Text,
+    who: User_,
+    languages: Annotated[str, Query(max_length=200)] = "",
+) -> TextRequestOut:
+    """Reads the current version again, in the languages given (for example eng,deu)."""
+    version, state, chosen = await run_in_threadpool(
+        text.reprocess, ctx.services.db, who, document_id, languages or None
+    )
+    return TextRequestOut(version=version, state=state, languages=chosen)
+
+
+@router.get("/documents/{document_id}/preview")
+def preview_info(document_id: uuid.UUID, ctx: Ctx, preview: Preview, who: User_) -> PreviewOut:
+    """How to show the current version: as page images, as text, or not at all."""
+    with ctx.services.db.tenant_session(who.tenant_id) as session:
+        view = preview.info(session, who, document_id)
+    return PreviewOut(
+        version=view.version_number,
+        kind=view.kind,
+        mime=view.mime,
+        pages=[PreviewPageOut(**vars(page)) for page in view.pages],
+    )
+
+
+@router.get("/documents/{document_id}/preview/pages/{number}")
+def preview_page(
+    document_id: uuid.UUID,
+    number: int,
+    ctx: Ctx,
+    preview: Preview,
+    who: User_,
+    width: Annotated[int, Query(ge=64, le=2000)] = 900,
+) -> Response:
+    """One page as an image. The file itself is never sent. Needs the preview right."""
+    image = preview.render(ctx.services.db, who, document_id, number, width)
+    return Response(
+        content=image.data,
+        media_type=image.media_type,
+        headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
+    )
+
+
+@router.post("/documents/{document_id}/versions/{number}/restore", status_code=201)
+def restore_version(
+    document_id: uuid.UUID, number: int, ctx: Ctx, docs: Docs, who: User_
+) -> VersionResult:
+    """Makes an earlier version current by adding it again as a new version."""
+    db = ctx.services.db
+    added = docs.restore_version(db, who, document_id, number)
+    with db.tenant_session(who.tenant_id) as session:
+        info = next(
+            item
+            for item in docs.versions(session, who, document_id)
+            if item.version.id == added.version.id
+        )
+    return VersionResult(
+        document=DocumentOut.model_validate(added.document),
+        version=_version_out(info),
+        duplicate=False,
+    )
+
+
+def _link(link: Link) -> LinkOut:
+    return LinkOut(
+        id=link.id,
+        relation_type=link.relation_type,
+        wording=link.wording,
+        direction=link.direction,
+        document=LinkedDocumentOut(
+            id=link.other.id,
+            title=link.other.title,
+            cabinet_id=link.other.cabinet_id,
+            folder_id=link.other.folder_id,
+        ),
+        can_remove=link.can_remove,
+    )
+
+
+@router.get("/document-link-types")
+def link_types(who: User_) -> list[LinkTypeOut]:
+    return [
+        LinkTypeOut(type=name, from_wording=a, to_wording=b, symmetric=same)
+        for name, (a, b, same) in RELATION_TYPES.items()
+    ]
+
+
+@router.get("/documents/{document_id}/links")
+def list_links(document_id: uuid.UUID, ctx: Ctx, relations: Relations, who: User_) -> list[LinkOut]:
+    """Links this document makes and links made to it, to documents the caller may read."""
+    with ctx.services.db.tenant_session(who.tenant_id) as session:
+        return [_link(item) for item in relations.list(session, who, document_id)]
+
+
+@router.post("/documents/{document_id}/links", status_code=201)
+def add_link(
+    document_id: uuid.UUID, body: AddLinkRequest, ctx: Ctx, relations: Relations, who: User_
+) -> LinkOut:
+    with ctx.services.db.tenant_session(who.tenant_id) as session:
+        return _link(
+            relations.add(session, who, document_id, body.to_document_id, body.relation_type)
+        )
+
+
+@router.delete("/documents/{document_id}/links/{link_id}", status_code=204)
+def remove_link(
+    document_id: uuid.UUID, link_id: uuid.UUID, ctx: Ctx, relations: Relations, who: User_
+) -> Response:
+    with ctx.services.db.tenant_session(who.tenant_id) as session:
+        relations.remove(session, who, document_id, link_id)
+    return Response(status_code=204)

@@ -98,6 +98,40 @@ def run_scheduler(services: Services) -> None:
         time.sleep(SCHEDULER_POLL_SECONDS)
 
 
+def ocr_check(services: Services, languages: list[str]) -> int:
+    """Reads a drawn sample page, to show that the OCR engine and its language packs work."""
+    from PIL import Image, ImageDraw, ImageFont
+
+    from docuflow.modules.documents.ocr import build_ocr_engine
+
+    engine = build_ocr_engine(services.settings)
+    if not engine.available():
+        print(json.dumps({"ok": False, "error": "the OCR engine is not installed"}))
+        return 1
+    missing = [code for code in languages if code not in engine.languages()]
+    image = Image.new("RGB", (900, 300), "white")
+    ImageDraw.Draw(image).multiline_text(
+        (40, 40),
+        "Invoice 1042" + chr(10) + "Supplier ABC",
+        fill="black",
+        font=ImageFont.load_default(size=44),
+    )
+    text = engine.recognise(image, [code for code in languages if code not in missing]).text
+    ok = not missing and "Invoice" in text and "1042" in text
+    print(
+        json.dumps(
+            {
+                "ok": ok,
+                "engine": engine.version(),
+                "languages_installed": len(engine.languages()),
+                "missing": missing,
+                "sample": text.replace(chr(10), " / "),
+            }
+        )
+    )
+    return 0 if ok else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="docuflow")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -108,6 +142,8 @@ def main(argv: list[str] | None = None) -> int:
     tenant.add_argument("name")
     verify = commands.add_parser("verify-audit", help="Verify a tenant's audit chain")
     verify.add_argument("tenant_id", type=uuid.UUID)
+    check = commands.add_parser("ocr-check", help="Read a sample page to test the OCR engine")
+    check.add_argument("languages", nargs="*", default=["eng"])
     args = parser.parse_args(argv)
 
     services = get_services()
@@ -123,6 +159,8 @@ def main(argv: list[str] | None = None) -> int:
             create_tenant(services, args.name)
         case "verify-audit":
             return verify_audit(services, args.tenant_id)
+        case "ocr-check":
+            return ocr_check(services, args.languages)
     return 0
 
 

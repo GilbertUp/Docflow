@@ -11,6 +11,7 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -19,11 +20,14 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from docuflow.platform.db import Base, IdMixin, TimestampMixin
 
 VERSION_STATES = ("quarantined", "released", "rejected")
+# Where reading the text of a version stands. "not_started" is for versions filed before F04.
+TEXT_STATES = ("not_started", "pending", "running", "done", "failed", "unsupported")
 
 
 class BinaryObject(IdMixin, TimestampMixin, Base):
@@ -47,6 +51,10 @@ class DocumentVersion(IdMixin, TimestampMixin, Base):
         UniqueConstraint("document_id", "number", name="uq_document_version_number"),
         Index("ix_document_version_binary", "tenant_id", "binary_object_id"),
         CheckConstraint("state IN ('quarantined', 'released', 'rejected')", name="state"),
+        CheckConstraint(
+            "text_state IN ('not_started', 'pending', 'running', 'done', 'failed', 'unsupported')",
+            name="text_state",
+        ),
     )
 
     tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"))
@@ -58,6 +66,8 @@ class DocumentVersion(IdMixin, TimestampMixin, Base):
     reason: Mapped[str] = mapped_column(Text, default="")
     # Which scanner cleared the file. "none" means it was not scanned.
     scan_engine: Mapped[str] = mapped_column(String(20), default="none")
+    text_state: Mapped[str] = mapped_column(String(20), default="not_started")
+    text_error: Mapped[str | None] = mapped_column(Text)
     state: Mapped[str] = mapped_column(String(20), default="released")
     created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
 
@@ -104,3 +114,72 @@ class IngestionItem(IdMixin, TimestampMixin, Base):
     message: Mapped[str] = mapped_column(Text, default="")
     document_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("document.id"))
     duplicate: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class Page(IdMixin, TimestampMixin, Base):
+    """One page of a version. Pixel sizes are those of the image the text was read from."""
+
+    __tablename__ = "page"
+    __table_args__ = (UniqueConstraint("version_id", "number", name="uq_page_number"),)
+
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"))
+    version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("document_version.id"))
+    number: Mapped[int] = mapped_column(Integer)
+    width: Mapped[int] = mapped_column(Integer, default=0)
+    height: Mapped[int] = mapped_column(Integer, default=0)
+    has_native_text: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_blank: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class OcrResult(IdMixin, TimestampMixin, Base):
+    """The text of a page as one engine read it in one set of languages.
+
+    Engine "native" means the text came from the file itself, with no recognition. Reading
+    again in other languages adds a row; the newest row is the current text.
+    """
+
+    __tablename__ = "ocr_result"
+    __table_args__ = (
+        UniqueConstraint("page_id", "engine", "language", name="uq_ocr_result_run"),
+        Index("ix_ocr_result_page", "tenant_id", "page_id", "created_at"),
+    )
+
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"))
+    page_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("page.id"))
+    engine: Mapped[str] = mapped_column(String(40))
+    engine_version: Mapped[str] = mapped_column(String(60), default="")
+    language: Mapped[str] = mapped_column(String(120), default="")
+    text: Mapped[str] = mapped_column(Text, default="")
+    # Words with their boxes in the page's pixels: {"t": text, "x", "y", "w", "h", "c": 0..1}.
+    boxes: Mapped[list[dict[str, object]]] = mapped_column(JSONB, default=list)
+    confidence: Mapped[float | None] = mapped_column(Float)
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class DocumentRelationship(IdMixin, TimestampMixin, Base):
+    """A typed link from one document to another, such as an invoice to its purchase order.
+
+    The link is stored once, in the direction it was made. Reading a document shows both the
+    links it makes and the links made to it, each worded for the side being read.
+    """
+
+    __tablename__ = "document_relationship"
+    __table_args__ = (
+        UniqueConstraint(
+            "from_document_id", "to_document_id", "relation_type", name="uq_document_relationship"
+        ),
+        CheckConstraint("from_document_id <> to_document_id", name="not_self"),
+        CheckConstraint(
+            "relation_type IN ('related', 'supersedes', 'responds_to', 'attached_to')",
+            name="relation_type",
+        ),
+        Index("ix_document_relationship_to", "tenant_id", "to_document_id"),
+    )
+
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"))
+    from_document_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("document.id", ondelete="CASCADE")
+    )
+    to_document_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("document.id", ondelete="CASCADE"))
+    relation_type: Mapped[str] = mapped_column(String(30))
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))

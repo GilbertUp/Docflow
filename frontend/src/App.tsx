@@ -6,12 +6,19 @@ import { Spinner } from "./components/ui";
 import { Account } from "./pages/Account";
 import { ApiKeys } from "./pages/admin/ApiKeys";
 import { Groups } from "./pages/admin/Groups";
+import { DocumentTypes } from "./pages/admin/DocumentTypes";
 import { Roles } from "./pages/admin/Roles";
 import { Users } from "./pages/admin/Users";
+import { FormsAdmin } from "./pages/admin/FormsAdmin";
+import { Workflows } from "./pages/admin/Workflows";
 import { Browser } from "./pages/files/Browser";
 import { CabinetsOverview, FilesLayout } from "./pages/files/FilesLayout";
 import { Login } from "./pages/Login";
 import { ForcedPasswordChange } from "./pages/PasswordChange";
+import { Forms, FillForm } from "./pages/Forms";
+import { Notifications } from "./pages/Notifications";
+import { Search } from "./pages/Search";
+import { Tasks } from "./pages/Tasks";
 
 /** Everything except the sign-in page needs a session, and a new user must pick a password. */
 function RequireAuth() {
@@ -49,9 +56,17 @@ export function App() {
             <Route path="cabinets/:id" element={<Browser key="cabinet" kind="cabinet" />} />
             <Route path="folders/:id" element={<Browser key="folder" kind="folder" />} />
           </Route>
+          <Route path="search" element={<Search />} />
+          <Route path="tasks" element={<Tasks />} />
+          <Route path="forms" element={<Forms />} />
+          <Route path="forms/:id" element={<FillForm />} />
+          <Route path="notifications" element={<Notifications />} />
           <Route path="admin/users" element={<Users />} />
           <Route path="admin/groups" element={<Groups />} />
           <Route path="admin/roles" element={<Roles />} />
+          <Route path="admin/document-types" element={<DocumentTypes />} />
+          <Route path="admin/forms" element={<FormsAdmin />} />
+          <Route path="admin/workflows" element={<Workflows />} />
           <Route path="admin/api-keys" element={<ApiKeys />} />
           <Route path="account" element={<Account />} />
           <Route path="*" element={<NotFound />} />
