@@ -41,6 +41,7 @@ from docuflow.modules.repository.service import RepositoryService
 from docuflow.platform.audit import AuditActor, AuditLog
 from docuflow.platform.db import utcnow
 from docuflow.platform.errors import Conflict, DomainError, Forbidden, NotFound, ValidationFailed
+from docuflow.platform.jobs import enqueue
 
 MANAGE = "document_types.manage"
 KEY = re.compile(r"^[a-z][a-z0-9_]{0,39}$")
@@ -230,6 +231,18 @@ def check_definition(item: FieldInput) -> None:
             coerce(_view_of(item), item.default_value)
         except ValueError as exc:
             raise ValueError(f"The default value is not valid: {exc}") from exc
+
+
+def request_search_row(session: Session, tenant_id: uuid.UUID, document_id: uuid.UUID) -> None:
+    """Queues rebuilding the document's search row. The job type is named, not imported."""
+    enqueue(
+        session,
+        tenant_id,
+        "search.index_document",
+        f"search:{document_id}:{uuid.uuid4().hex}",
+        queue="index",
+        payload={"document_id": str(document_id)},
+    )
 
 
 def check_pattern(pattern: Any) -> None:
@@ -859,6 +872,8 @@ class IndexingService:
                 kind = view.field.data_type
                 changes[key] = [_short(before, kind), _short(after, kind)]
         from docuflow.modules.indexing.suggest import settle_suggestions
+
+        request_search_row(session, principal.tenant_id, document.id)
 
         settle_suggestions(
             session,

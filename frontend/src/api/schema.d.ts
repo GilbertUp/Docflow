@@ -955,6 +955,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search Documents
+         * @description Documents whose title, details or text match, limited to what the caller may read.
+         */
+        get: operations["search_documents_api_v1_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users": {
         parameters: {
             query?: never;
@@ -1484,6 +1504,40 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** HitOut */
+        HitOut: {
+            /**
+             * Cabinet Id
+             * Format: uuid
+             */
+            cabinet_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Document Type Id */
+            document_type_id: string | null;
+            /** Folder Id */
+            folder_id: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Matched In */
+            matched_in: string;
+            /** Score */
+            score: number;
+            /** Size Bytes */
+            size_bytes: number;
+            /** Snippet */
+            snippet: string | null;
+            /** Title */
+            title: string;
+            /** Type Name */
+            type_name: string | null;
+        };
         /** ImportItemOut */
         ImportItemOut: {
             /** Document Id */
@@ -1832,6 +1886,17 @@ export interface components {
         RunOut: {
             /** Version Number */
             version_number: number;
+        };
+        /** SearchOut */
+        SearchOut: {
+            /** Hits */
+            hits: components["schemas"]["HitOut"][];
+            /** Query */
+            query: string;
+            /** Total */
+            total: number;
+            /** Truncated */
+            truncated: boolean;
         };
         /** SessionOut */
         SessionOut: {
@@ -4250,6 +4315,41 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_documents_api_v1_search_get: {
+        parameters: {
+            query: {
+                q: string;
+                limit?: number;
+                offset?: number;
+                type_id?: string | null;
+                cabinet_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchOut"];
+                };
             };
             /** @description Validation Error */
             422: {

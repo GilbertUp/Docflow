@@ -25,6 +25,8 @@ from docuflow.modules.indexing.service import IndexingService
 from docuflow.modules.indexing.suggest import SuggestionService
 from docuflow.modules.repository.api import router as repository_router
 from docuflow.modules.repository.service import RepositoryService
+from docuflow.modules.search.api import router as search_router
+from docuflow.modules.search.service import SearchService
 from docuflow.platform import context
 from docuflow.platform.audit import AuditActor
 from docuflow.platform.bootstrap import Services
@@ -75,10 +77,12 @@ def install(app: FastAPI, services: Services) -> ApiContext:
     app.state.preview = built.preview
     app.state.indexing = IndexingService(services.audit, ctx.policy, app.state.repo)
     app.state.suggestions = SuggestionService(services.audit, ctx.policy, app.state.repo)
+    app.state.search = SearchService(services.audit, ctx.policy)
     app.include_router(router)
     app.include_router(repository_router)
     app.include_router(documents_router)
     app.include_router(indexing_router)
+    app.include_router(search_router)
 
     @app.exception_handler(DomainError)
     async def domain_error(request: Request, exc: DomainError) -> JSONResponse:

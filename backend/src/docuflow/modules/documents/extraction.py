@@ -49,6 +49,7 @@ log = structlog.get_logger("docuflow.extraction")
 JOB_TYPE = "documents.extract_text"
 # Job type of the indexing module, named here so reading text never imports indexing.
 FIELDS_JOB_TYPE = "indexing.extract_fields"
+SEARCH_JOB_TYPE = "search.index_document"
 IMAGE_TYPES = {"image/png", "image/jpeg", "image/tiff", "image/gif", "image/webp"}
 TEXT_TYPES = {"text/plain", "text/csv"}
 SUPPORTED_TYPES = {"application/pdf", *IMAGE_TYPES, *TEXT_TYPES}
@@ -120,6 +121,15 @@ def request_extraction(
     session: Session, tenant_id: uuid.UUID, version: DocumentVersion, mime: str
 ) -> None:
     """Queues reading a new version, in the same transaction that filed it."""
+    # The title is searchable at once, before any text has been read.
+    enqueue(
+        session,
+        tenant_id,
+        SEARCH_JOB_TYPE,
+        f"search:{version.document_id}:{uuid.uuid4().hex}",
+        queue="index",
+        payload={"document_id": str(version.document_id)},
+    )
     if mime not in SUPPORTED_TYPES:
         version.text_state = "unsupported"
         return
@@ -586,6 +596,14 @@ class ExtractionService:
             assert version is not None
             version.text_state = "failed" if error else "done"
             version.text_error = error
+            enqueue(
+                session,
+                tenant_id,
+                SEARCH_JOB_TYPE,
+                f"search:{document_id}:{uuid.uuid4().hex}",
+                queue="index",
+                payload={"document_id": str(document_id)},
+            )
             if not error:
                 enqueue(
                     session,

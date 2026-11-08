@@ -750,3 +750,20 @@ textarea {
     overflow-x: auto;
   }
 }
+
+/* Search */
+.search-hits {
+  list-style: none;
+  padding: 0;
+}
+.search-hits li {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border, #d0d4dc);
+}
+.search-hits .snippet {
+  margin: 0.25rem 0 0;
+}
+.search-hits mark {
+  background: #ffe58a;
+  color: inherit;
+}

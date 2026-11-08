@@ -13,6 +13,7 @@ import { Browser } from "./pages/files/Browser";
 import { CabinetsOverview, FilesLayout } from "./pages/files/FilesLayout";
 import { Login } from "./pages/Login";
 import { ForcedPasswordChange } from "./pages/PasswordChange";
+import { Search } from "./pages/Search";
 
 /** Everything except the sign-in page needs a session, and a new user must pick a password. */
 function RequireAuth() {
@@ -50,6 +51,7 @@ export function App() {
             <Route path="cabinets/:id" element={<Browser key="cabinet" kind="cabinet" />} />
             <Route path="folders/:id" element={<Browser key="folder" kind="folder" />} />
           </Route>
+          <Route path="search" element={<Search />} />
           <Route path="admin/users" element={<Users />} />
           <Route path="admin/groups" element={<Groups />} />
           <Route path="admin/roles" element={<Roles />} />

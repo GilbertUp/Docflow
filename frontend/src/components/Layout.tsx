@@ -17,6 +17,7 @@ export function Layout() {
         </NavLink>
         <nav className="topnav" aria-label="Main">
           <NavLink to="/files">Files</NavLink>
+          <NavLink to="/search">Search</NavLink>
           {canSeePeople ? <NavLink to="/admin/users">Users</NavLink> : null}
           {canSeePeople ? <NavLink to="/admin/groups">Groups</NavLink> : null}
           {canSeePeople || can("security.admin") ? <NavLink to="/admin/roles">Roles</NavLink> : null}
